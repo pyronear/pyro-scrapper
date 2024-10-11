@@ -110,7 +110,7 @@ test/fixtures/videos/
 .idea/
 
 #Ignore version file
-pyroengine/version.py
+pyroscrapper/version.py
 
 # Ignore config file
 ./data
