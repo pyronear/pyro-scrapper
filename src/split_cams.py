@@ -8,6 +8,16 @@ from tqdm import tqdm
 
 
 def resize_image(image, max_width):
+    """
+    Resize an image to a specified maximum width while maintaining the aspect ratio.
+
+    Parameters:
+        image (np.ndarray): The input image as a NumPy array.
+        max_width (int): The maximum width for the resized image.
+
+    Returns:
+        np.ndarray: The resized image.
+    """
     h, w = image.shape[:2]
     if w > max_width:
         scale = max_width / w
@@ -16,12 +26,20 @@ def resize_image(image, max_width):
 
 
 def extract_features(image_path):
+    """
+    Extract keypoints and descriptors from an image using ORB.
+
+    Parameters:
+        image_path (str): Path to the image file.
+
+    Returns:
+        tuple: A tuple containing:
+            - keypoints (list): A list of detected keypoints.
+            - descriptors (np.ndarray): A NumPy array of descriptors corresponding to the keypoints.
+    """
     # Load image
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     image = resize_image(image, max_width=500)
-    # crop sky
-    # h, w = image.shape[:2]
-    # image = image[-int(h/2):,:]
 
     # Use ORB or SIFT for feature detection
     orb = cv2.ORB_create()
@@ -30,6 +48,16 @@ def extract_features(image_path):
 
 
 def match_features(descriptors1, descriptors2):
+    """
+    Match descriptors between two images using the BFMatcher.
+
+    Parameters:
+        descriptors1 (np.ndarray): Descriptors from the first image.
+        descriptors2 (np.ndarray): Descriptors from the second image.
+
+    Returns:
+        list: A list of matched keypoints, sorted by distance (lower distance indicates better matches).
+    """
     if descriptors1 is None or descriptors2 is None:
         return []
     # Use BFMatcher to find the best matches between descriptors
@@ -41,6 +69,19 @@ def match_features(descriptors1, descriptors2):
 
 
 def compute_homography(kp1, kp2, matches):
+    """
+    Compute the homography matrix between two sets of matched keypoints using RANSAC.
+
+    Parameters:
+        kp1 (list): Keypoints from the first image.
+        kp2 (list): Keypoints from the second image.
+        matches (list): Matched keypoints between the two images.
+
+    Returns:
+        tuple: A tuple containing:
+            - H (np.ndarray): The homography matrix.
+            - inliers (int): The number of inliers found during RANSAC.
+    """
     # Extract the matched keypoints
     src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
     dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
@@ -52,6 +93,18 @@ def compute_homography(kp1, kp2, matches):
 
 
 def create_cluster(imgs, features, match_th=125, inliers_th=50):
+    """
+    Create clusters of images based on feature matching and homography inliers.
+
+    Parameters:
+        imgs (list): List of image file paths.
+        features (list): List of tuples containing keypoints and descriptors for each image.
+        match_th (int): Threshold for the minimum number of matches required to consider a match.
+        inliers_th (int): Threshold for the minimum number of inliers to consider a valid match.
+
+    Returns:
+        dict: A dictionary where keys are cluster IDs and values are lists of image indices belonging to each cluster.
+    """
     clusters = {}
     for i in range(len(imgs)):
         match_found = -1
@@ -80,6 +133,17 @@ def create_cluster(imgs, features, match_th=125, inliers_th=50):
 
 
 def move_to_groups(clusters, imgs, clean=True):
+    """
+    Move images into folders based on their clusters and optionally clean up the original folders.
+
+    Parameters:
+        clusters (dict): A dictionary where keys are cluster IDs and values are lists of image indices.
+        imgs (list): List of image file paths.
+        clean (bool): If True, removes the original folders after moving the images.
+
+    Returns:
+        None
+    """
     group_id = 0
     for indexes in clusters.values():
         if len(indexes) > 4:
