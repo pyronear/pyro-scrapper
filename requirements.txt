@@ -1,0 +1,9 @@
+opencv-python
+tqdm
+requests
+python-dotenv
+pytz
+
+#Style
+black
+isort
