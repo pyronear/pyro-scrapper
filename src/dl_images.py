@@ -21,7 +21,7 @@ OUTPUT_BASE_PATH = os.getenv("OUTPUT_PATH", "AWF_scrap")
 logging.basicConfig(level=logging.INFO)
 
 # Constants
-DURATION = "6h"  # options: 15m, 1h, 3h, 6h, 12h
+DURATION = "1h"  # options: 15m, 1h, 3h, 6h, 12h
 CAMERAS_URL = (
     "https://s3-us-west-2.amazonaws.com/alertwildfire-data-public/all_cameras-v2.json"
 )
@@ -319,7 +319,7 @@ if __name__ == "__main__":
         response = requests.get(CAMERAS_URL, headers=HEADERS)
         cameras_data = response.json()
 
-        download_and_process_images(cameras_data["features"])
+        download_and_process_images(cameras_data["features"][:10])
         # Remove grayscale images
         remove_grayscale_images()
 
