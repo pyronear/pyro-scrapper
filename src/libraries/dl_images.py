@@ -108,7 +108,7 @@ def get_camera_local_time(state):
     return datetime.now(timezone)
 
 
-def download_and_process_camera(cam_properties):
+def download_and_process_camera(cam_properties, output_path):
     """
     Download and process camera images based on the camera properties. Handles errors such as timeouts.
 
@@ -121,7 +121,7 @@ def download_and_process_camera(cam_properties):
 
         url = f"https://ts1.alertwildfire.org/text/timelapse/?source={source}&preset={DURATION}"
         response = requests.get(url, headers=HEADERS, timeout=MAX_TIME)
-        process_camera_images(response, state, source)
+        process_camera_images(response, state, source, output_path)
     except requests.exceptions.Timeout:
         logging.error(f"Timeout processing {source}")
     except Exception as e:
@@ -153,7 +153,7 @@ def download_and_process_images(cameras_features):
                 logging.error(result)
 
 
-def process_camera_images(response, state, source):
+def process_camera_images(response, state, source, output_path):
     """
     Process and save camera images from an HTTP response into a specified path,
     based on the camera's state and source information.
@@ -168,9 +168,6 @@ def process_camera_images(response, state, source):
     """
 
     local_time = get_camera_local_time(state)
-    output_path = os.path.join(
-        OUTPUT_BASE_PATH, "temp", local_time.strftime("%Y_%m_%d")
-    )
     source_path = os.path.join(output_path, source)
     os.makedirs(source_path, exist_ok=True)
 
