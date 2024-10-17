@@ -1,10 +1,12 @@
 import glob
+import json
 import logging
 import multiprocessing
 import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -12,8 +14,6 @@ import pytz
 import requests
 from dotenv import load_dotenv
 from tqdm import tqdm
-import json
-from pathlib import Path
 
 # Load configurations from .env file
 load_dotenv()
@@ -62,7 +62,7 @@ def duration_to_seconds(duration_str):
         seconds = minutes * 60
     else:
         raise ValueError("Invalid duration string format")
-    
+
     logging.info(f"Duration '{duration_str}' converted to {seconds} seconds.")
     return seconds
 
@@ -94,8 +94,10 @@ def download_and_process_camera(cam_properties):
 
         url = f"https://ts1.alertwildfire.org/text/timelapse/?source={source}&preset={DURATION}"
         response = requests.get(url, headers=HEADERS, timeout=MAX_TIME)
-        
-        logging.info(f"Successfully downloaded images for camera '{source}' in '{state}'.")
+
+        logging.info(
+            f"Successfully downloaded images for camera '{source}' in '{state}'."
+        )
         process_camera_images(response, state, source)
     except requests.exceptions.Timeout:
         logging.error(f"Timeout while processing camera '{source}'.")
@@ -155,7 +157,9 @@ def sort_and_rename_images(source_path, local_time):
         if nb_imgs > 0:
             logging.info(f"Found {nb_imgs} images to rename.")
             dt = duration_to_seconds(DURATION) / nb_imgs
-            local_time = local_time - timedelta(hours=duration_to_seconds(DURATION) / 3600)
+            local_time = local_time - timedelta(
+                hours=duration_to_seconds(DURATION) / 3600
+            )
 
             for i, file in enumerate(imgs):
                 frame_time = local_time + timedelta(seconds=dt * i)
@@ -245,7 +249,7 @@ if __name__ == "__main__":
         logging.info(f"Fetching camera data from '{CAMERAS_URL}'.")
         response = requests.get(CAMERAS_URL, headers=HEADERS)
         cameras_data = response.json()
-        
+
         out_file = open(OUTPUT_BASE_PATH + "/cameras.json", "w")
         json.dump(cameras_data, out_file)
         logging.info(f"Camera data saved to '{OUTPUT_BASE_PATH}/cameras.json'.")

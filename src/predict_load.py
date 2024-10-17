@@ -1,12 +1,13 @@
 # process_images.py
 
-import os
-from PIL import Image
-from pyroengine.engine import Engine
-import logging
 import argparse
 import glob
+import logging
+import os
+
 from dotenv import load_dotenv
+from PIL import Image
+from pyroengine.engine import Engine
 
 load_dotenv()
 
@@ -18,14 +19,17 @@ OUTPUT_BASE_PATH = os.getenv("OUTPUT_PATH", "AWF_scrap")
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Traiter des images pour détecter des signes de feux de forêt.")
+    parser = argparse.ArgumentParser(
+        description="Traiter des images pour détecter des signes de feux de forêt."
+    )
     parser.add_argument(
         "--api_url",
         type=str,
         default=None,
-        help="URL de l'API pyronear. Laisser vide pour ne pas utiliser l'API."
+        help="URL de l'API pyronear. Laisser vide pour ne pas utiliser l'API.",
     )
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -44,9 +48,9 @@ def main():
         exit(0)
 
     logger.info(f"Nombre d'images à traiter : {len(image_paths)}")
-    
-    engines = {} 
-    
+
+    engines = {}
+
     # Iterate over each image path
     for image_path in image_paths:
         try:
@@ -54,21 +58,25 @@ def main():
 
             date = filename[:-4]
 
-            logger.info(f"Day: {day}, Camera ID: {camera_id}, Date: {date}, Path: {image_path}")
-            
+            logger.info(
+                f"Day: {day}, Camera ID: {camera_id}, Date: {date}, Path: {image_path}"
+            )
+
             if camera_id not in engines:
                 engine = Engine(
                     api_host=api_url,
                     static_cam_id=camera_id,
                 )
                 engines.append(engine)
-            
+
             frame = Image.open(image_path).convert("RGB")
             # Initialiser l'Engine
 
-            confidence = engines[camera_id].predict(frame=frame, cam_id=camera_id, pose_id=None)
+            confidence = engines[camera_id].predict(
+                frame=frame, cam_id=camera_id, pose_id=None
+            )
             logger.info(f"Image: {image_path} - Confiance: {confidence:.2%}")
-            
+
             engines[camera_id].process_alerts()
 
         except Exception as e:
@@ -76,6 +84,7 @@ def main():
         finally:
             logger.info(f"Removing: {image_path} - Confiance: {confidence:.2%}")
             os.remove(image_path)
+
 
 if __name__ == "__main__":
     main()
