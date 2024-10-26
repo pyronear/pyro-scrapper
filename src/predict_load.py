@@ -4,6 +4,7 @@ import argparse
 import glob
 import logging
 import os
+import json
 
 from dotenv import load_dotenv
 from PIL import Image
@@ -16,26 +17,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 OUTPUT_BASE_PATH = os.getenv("OUTPUT_PATH", "AWF_scrap")
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Traiter des images pour détecter des signes de feux de forêt."
-    )
-    parser.add_argument(
-        "--api_url",
-        type=str,
-        default=None,
-        help="URL de l'API pyronear. Laisser vide pour ne pas utiliser l'API.",
-    )
-    return parser.parse_args()
+API_URL = os.getenv("API_URL")
 
 
 def main():
-    args = parse_args()
 
     images_folder = OUTPUT_BASE_PATH + "/dl_frames"
-    api_url = args.api_url
 
     # Vérifiez que le dossier des images existe
     if not os.path.isdir(images_folder):
@@ -49,7 +36,19 @@ def main():
 
     logger.info(f"Nombre d'images à traiter : {len(image_paths)}")
 
-    engines = {}
+    with open("data/credentials-wildfire.json", "rb") as json_file:
+        cameras_credentials = json.load(json_file)
+
+    splitted_cam_creds = {}
+    for _ip, cam_data in cameras_credentials.items():
+        if _ip != "organization":
+            splitted_cam_creds[_ip] = cam_data["token"]
+
+    engine = Engine(
+        api_host=API_URL,
+        cam_creds=splitted_cam_creds,
+        external_sources=True,
+    )
 
     # Iterate over each image path
     for image_path in image_paths:
@@ -62,27 +61,20 @@ def main():
                 f"Day: {day}, Camera ID: {camera_id}, Date: {date}, Path: {image_path}"
             )
 
-            if camera_id not in engines:
-                engine = Engine(
-                    api_host=api_url,
-                    static_cam_id=camera_id,
-                )
-                engines.append(engine)
-
             frame = Image.open(image_path).convert("RGB")
             # Initialiser l'Engine
 
-            confidence = engines[camera_id].predict(
+            confidence = engine.predict(
                 frame=frame, cam_id=camera_id, pose_id=None
             )
             logger.info(f"Image: {image_path} - Confiance: {confidence:.2%}")
 
-            engines[camera_id].process_alerts()
+            engine._process_alerts()
 
         except Exception as e:
             logger.exception(f"Erreur lors du traitement de l'image {image_path}: {e}")
         finally:
-            logger.info(f"Removing: {image_path} - Confiance: {confidence:.2%}")
+            logger.info(f"Removing: {image_path}")
             os.remove(image_path)
 
 

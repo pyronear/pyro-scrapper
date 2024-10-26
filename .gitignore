@@ -124,3 +124,6 @@ conda-dist/
 AWF_scrap*
 *.jpg
 *.pt
+
+cameras.csv
+credentials.json

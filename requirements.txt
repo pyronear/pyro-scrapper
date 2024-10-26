@@ -3,6 +3,7 @@ tqdm
 requests
 python-dotenv
 pytz
+Pillow
 
 #Style
 black
