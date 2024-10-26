@@ -257,7 +257,7 @@ if __name__ == "__main__":
         cameras_data = json.load(open(OUTPUT_BASE_PATH + "/cameras.json"))
 
     logging.info("Starting image download and processing.")
-    download_and_process_images(cameras_data["features"][:2])
+    download_and_process_images(cameras_data["features"])
 
     logging.info("Removing grayscale images.")
     remove_grayscale_images()
