@@ -1,8 +1,9 @@
 import csv
 import json
+import os
 from datetime import datetime
 from pathlib import Path
-import os
+
 import requests
 from dotenv import load_dotenv
 
@@ -54,8 +55,15 @@ if __name__ == "__main__":
 
     # CSV column headers
     csv_headers = [
-        "organization_id", "name", "angle_of_view", "elevation", "lat", "lon",
-        "is_trustable", "last_active_at", "created_at"
+        "organization_id",
+        "name",
+        "angle_of_view",
+        "elevation",
+        "lat",
+        "lon",
+        "is_trustable",
+        "last_active_at",
+        "created_at",
     ]
 
     # Prepare to write CSV data
@@ -68,7 +76,7 @@ if __name__ == "__main__":
     for index, feature in enumerate(cameras_data["features"], start=1):
         properties = feature["properties"]
         geometry = feature["geometry"]
-        
+
         # Extract relevant data for the CSV
         name = properties.get("name", f"cam-{index}")
         print("Processing the camera : " + name)
@@ -80,10 +88,19 @@ if __name__ == "__main__":
         created_at = properties.get("activated_at", datetime.now().isoformat())
 
         # Add a row to CSV data
-        csv_data.append([
-            organization_id, name, angle_of_view, elevation, lat, lon,
-            is_trustable, last_active_at, created_at
-        ])
+        csv_data.append(
+            [
+                organization_id,
+                name,
+                angle_of_view,
+                elevation,
+                lat,
+                lon,
+                is_trustable,
+                last_active_at,
+                created_at,
+            ]
+        )
 
         # Prepare data for JSON
         camera_id = properties.get("id", f"reolink_dev{index}")
@@ -94,17 +111,17 @@ if __name__ == "__main__":
             "name": name,
             "type": "static",  # Always static
             "token": "",
-            "azimuth": azimuth
+            "azimuth": azimuth,
         }
 
     # Write the CSV data to file
-    with open(csv_output_file, mode='w', newline='') as file:
+    with open(csv_output_file, mode="w", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(csv_headers)  # Write the CSV headers
         writer.writerows(csv_data)  # Write the CSV rows
 
     # Write the JSON data to file
-    with open(json_output_file, mode='w') as file:
+    with open(json_output_file, mode="w") as file:
         json.dump(json_data, file, indent=4)
 
     print(f"CSV file saved to: {csv_output_file}")

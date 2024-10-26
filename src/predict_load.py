@@ -2,9 +2,9 @@
 
 import argparse
 import glob
+import json
 import logging
 import os
-import json
 
 from dotenv import load_dotenv
 from PIL import Image
@@ -64,9 +64,7 @@ def main():
             frame = Image.open(image_path).convert("RGB")
             # Initialiser l'Engine
 
-            confidence = engine.predict(
-                frame=frame, cam_id=camera_id, pose_id=None
-            )
+            confidence = engine.predict(frame=frame, cam_id=camera_id, pose_id=None)
             logger.info(f"Image: {image_path} - Confiance: {confidence:.2%}")
 
             engine._process_alerts()
