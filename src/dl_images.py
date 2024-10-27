@@ -23,7 +23,7 @@ OUTPUT_BASE_PATH = os.getenv("OUTPUT_PATH", "AWF_scrap")
 logging.basicConfig(level=logging.INFO)
 
 # Constants
-DURATION = "1h"  # options: 15m, 1h, 3h, 6h, 12h
+DURATION = "6h"  # options: 15m, 1h, 3h, 6h, 12h
 CAMERAS_URL = (
     "https://s3-us-west-2.amazonaws.com/alertwildfire-data-public/all_cameras-v2.json"
 )
@@ -53,6 +53,16 @@ MAX_TIME = 100
 
 def duration_to_seconds(duration_str):
     logging.info(f"Converting duration '{duration_str}' to seconds.")
+    """
+    logging.info(f"Converting duration '{duration_str}' to seconds.")
+    Convert a duration string to the equivalent number of seconds.
+    Args:
+        duration_str (str): A duration string in the format "Xh" (X hours) or "Xmn" (X minutes).
+    Returns:
+        int: The number of seconds equivalent to the duration string.
+    Raises:
+        ValueError: If the duration string format is invalid.
+    """
     duration_str = duration_str.lower()
     if duration_str.endswith("h"):
         hours = int(duration_str[:-1])
@@ -68,6 +78,13 @@ def duration_to_seconds(duration_str):
 
 
 def generate_chunks(response):
+    """
+    Splits the response content into chunks based on a specific delimiter. Each chunk represents a frame or segment.
+    Args:
+        response (requests.Response): The HTTP response containing the content to be split.
+    Yields:
+        bytes: A chunk of the response content.
+    """
     logging.info("Generating image chunks from the HTTP response.")
     chunks = response.content.split(b"--frame\r\n")
     for chunk in chunks:
@@ -78,6 +95,13 @@ def generate_chunks(response):
 
 
 def get_camera_local_time(state):
+    """
+    Get the local time for a given state using the specified state's timezone.
+    Args:
+        state (str): The state for which to find the local time.
+    Returns:
+        datetime: The current local time for the given state.
+    """
     logging.info(f"Getting local time for the state '{state}'.")
     timezone_str = STATE_TIMEZONES.get(state, "America/Phoenix")
     timezone = pytz.timezone(timezone_str)
@@ -87,6 +111,11 @@ def get_camera_local_time(state):
 
 
 def download_and_process_camera(cam_properties):
+    """
+    Download and process camera images based on the camera properties. Handles errors such as timeouts.
+    Args:
+        cam_properties (dict): A dictionary containing properties of a camera, including its state and ID.
+    """
     try:
         state = cam_properties.get("state")
         source = cam_properties.get("id").lower()
@@ -106,6 +135,11 @@ def download_and_process_camera(cam_properties):
 
 
 def download_and_process_images(cameras_features):
+    """
+    Download and process images for a list of cameras concurrently.
+    Args:
+        cameras_features (list): A list of camera features, each containing camera properties.
+    """
     logging.info("Starting to download and process camera images concurrently.")
     with ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor, tqdm(
         total=len(cameras_features)
@@ -126,6 +160,16 @@ def download_and_process_images(cameras_features):
 
 
 def process_camera_images(response, state, source):
+    """
+    Process and save camera images from an HTTP response into a specified path,
+    based on the camera's state and source information.
+    Args:
+        response (requests.Response): The HTTP response containing the camera images.
+        state (str): The state of the camera.
+        source (str): The camera source identifier.
+    Logs:
+        Error messages if any exception occurs during the processing.
+    """
     local_time = get_camera_local_time(state)
     output_path = os.path.join(
         OUTPUT_BASE_PATH, "temp", local_time.strftime("%Y_%m_%d")
@@ -148,6 +192,14 @@ def process_camera_images(response, state, source):
 
 
 def sort_and_rename_images(source_path, local_time):
+    """
+    Sort and rename images in a directory based on their timestamps relative to the local time.
+    Args:
+        source_path (str): The directory containing the images.
+        local_time (datetime): The local time of the camera when the first image was captured.
+    Logs:
+        Error messages if any exception occurs during the sorting and renaming process.
+    """
     logging.info(f"Sorting and renaming images in directory '{source_path}'.")
     try:
         imgs = glob.glob(os.path.join(source_path, "*"))
@@ -172,6 +224,13 @@ def sort_and_rename_images(source_path, local_time):
 
 
 def remove_if_gray(file):
+    """
+    Remove an image file if it is determined to be grayscale.
+    Args:
+        file (str): The path to the image file.
+    Logs:
+        Error messages if any exception occurs. The file is removed in case of exceptions.
+    """
     try:
         im = cv2.imread(file)
         h = im.shape[0]
@@ -186,6 +245,11 @@ def remove_if_gray(file):
 
 
 def remove_grayscale_images():
+    """
+    Remove grayscale images from the temporary directory using threading.
+    Logs:
+        Error messages if any exception occurs during the removal process.
+    """
     logging.info("Removing grayscale images.")
     try:
         temp_dir = os.path.join(OUTPUT_BASE_PATH, "temp")
@@ -197,6 +261,11 @@ def remove_grayscale_images():
 
 
 def cleanup_empty_folders():
+    """
+    Remove empty folders within the temporary directory.
+    Logs:
+        Error messages if any exception occurs during the cleanup process.
+    """
     logging.info("Cleaning up empty folders.")
     try:
         temp_dir = os.path.join(OUTPUT_BASE_PATH, "temp")
@@ -210,6 +279,12 @@ def cleanup_empty_folders():
 
 
 def merge_folders(src, dst):
+    """
+    Merge two folders, overwriting files in the destination folder if they already exist.
+    Args:
+        src (str): The path to the source folder.
+        dst (str): The path to the destination folder.
+    """
     logging.info(f"Merging folders from '{src}' to '{dst}'.")
     if not os.path.exists(dst):
         shutil.move(src, dst)
@@ -230,6 +305,9 @@ def merge_folders(src, dst):
 
 
 def move_processed_directory():
+    """
+    Move processed directories from a temporary location to the final destination, merging folders as needed.
+    """
     logging.info("Moving processed directories.")
     temp_dir = os.path.join(OUTPUT_BASE_PATH, "temp")
     scrap_folders = glob.glob(os.path.join(temp_dir, "**/*"))
