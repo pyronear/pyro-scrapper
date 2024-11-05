@@ -1,6 +1,5 @@
 # process_images.py
 
-import argparse
 import glob
 import json
 import logging
@@ -21,7 +20,6 @@ API_URL = os.getenv("API_URL")
 
 
 def main():
-
     images_folder = OUTPUT_BASE_PATH + "/dl_frames"
 
     # Vérifiez que le dossier des images existe

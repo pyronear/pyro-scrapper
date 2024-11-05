@@ -11,7 +11,7 @@ def resize_image(image, max_width):
     """
     Resize an image to a specified maximum width while maintaining the aspect ratio.
 
-    Parameters:
+    Args:
         image (np.ndarray): The input image as a NumPy array.
         max_width (int): The maximum width for the resized image.
 
@@ -29,7 +29,7 @@ def extract_features(image_path):
     """
     Extract keypoints and descriptors from an image using ORB.
 
-    Parameters:
+    Args:
         image_path (str): Path to the image file.
 
     Returns:
@@ -42,7 +42,7 @@ def extract_features(image_path):
     image = resize_image(image, max_width=500)
 
     # Use ORB or SIFT for feature detection
-    orb = cv2.ORB_create()
+    orb = cv2.ORB_create()  # type: ignore[attr-defined]
     keypoints, descriptors = orb.detectAndCompute(image, None)
     return keypoints, descriptors
 
@@ -51,7 +51,7 @@ def match_features(descriptors1, descriptors2):
     """
     Match descriptors between two images using the BFMatcher.
 
-    Parameters:
+    Args:
         descriptors1 (np.ndarray): Descriptors from the first image.
         descriptors2 (np.ndarray): Descriptors from the second image.
 
@@ -72,7 +72,7 @@ def compute_homography(kp1, kp2, matches):
     """
     Compute the homography matrix between two sets of matched keypoints using RANSAC.
 
-    Parameters:
+    Args:
         kp1 (list): Keypoints from the first image.
         kp2 (list): Keypoints from the second image.
         matches (list): Matched keypoints between the two images.
@@ -83,8 +83,12 @@ def compute_homography(kp1, kp2, matches):
             - inliers (int): The number of inliers found during RANSAC.
     """
     # Extract the matched keypoints
-    src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-    dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+    src_pts = np.float32(np.array([kp1[m.queryIdx].pt for m in matches])).reshape(
+        -1, 1, 2
+    )
+    dst_pts = np.float32(np.array([kp2[m.trainIdx].pt for m in matches])).reshape(
+        -1, 1, 2
+    )
     # Compute the homography matrix using RANSAC
     H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
     # Number of inliers (good matches)
@@ -96,7 +100,7 @@ def create_cluster(imgs, features, match_th=125, inliers_th=50):
     """
     Create clusters of images based on feature matching and homography inliers.
 
-    Parameters:
+    Args:
         imgs (list): List of image file paths.
         features (list): List of tuples containing keypoints and descriptors for each image.
         match_th (int): Threshold for the minimum number of matches required to consider a match.
@@ -105,7 +109,7 @@ def create_cluster(imgs, features, match_th=125, inliers_th=50):
     Returns:
         dict: A dictionary where keys are cluster IDs and values are lists of image indices belonging to each cluster.
     """
-    clusters = {}
+    clusters: dict[int, list] = {}
     for i in range(len(imgs)):
         match_found = -1
         for k, indexes in clusters.items():
@@ -136,7 +140,7 @@ def move_to_groups(clusters, imgs, clean=True):
     """
     Move images into folders based on their clusters and optionally clean up the original folders.
 
-    Parameters:
+    Args:
         clusters (dict): A dictionary where keys are cluster IDs and values are lists of image indices.
         imgs (list): List of image file paths.
         clean (bool): If True, removes the original folders after moving the images.

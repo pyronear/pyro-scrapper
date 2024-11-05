@@ -2,7 +2,14 @@
 style:
 	isort .
 	black .
+	ruff format .
+	ruff check --fix .
 
+quality:
+	isort .
+	flake8
+	mypy
+	pydocstyle
 
 build:
 	docker build . -t pyronear/pyro-etl
