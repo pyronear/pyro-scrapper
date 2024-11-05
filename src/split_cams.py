@@ -89,7 +89,7 @@ def compute_homography(kp1, kp2, matches):
     # Compute the homography matrix using RANSAC
     H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
     # Number of inliers (good matches)
-    inliers = mask.sum()
+    inliers = mask.sum() # type: ignore
     return H, inliers
 
 
