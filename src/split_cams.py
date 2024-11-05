@@ -5,7 +5,7 @@ import shutil
 import cv2
 import numpy as np
 from tqdm import tqdm
-
+from typing import Dict
 
 def resize_image(image, max_width):
     """
@@ -83,12 +83,8 @@ def compute_homography(kp1, kp2, matches):
             - inliers (int): The number of inliers found during RANSAC.
     """
     # Extract the matched keypoints
-    src_pts = np.float32(np.array([kp1[m.queryIdx].pt for m in matches])).reshape(
-        -1, 1, 2
-    )
-    dst_pts = np.float32(np.array([kp2[m.trainIdx].pt for m in matches])).reshape(
-        -1, 1, 2
-    )
+    src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+    dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
     # Compute the homography matrix using RANSAC
     H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
     # Number of inliers (good matches)
@@ -109,7 +105,7 @@ def create_cluster(imgs, features, match_th=125, inliers_th=50):
     Returns:
         dict: A dictionary where keys are cluster IDs and values are lists of image indices belonging to each cluster.
     """
-    clusters: dict[int, list] = {}
+    clusters: Dict[int, list] = {}
     for i in range(len(imgs)):
         match_found = -1
         for k, indexes in clusters.items():

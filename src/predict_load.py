@@ -55,9 +55,7 @@ def main():
 
             date = filename[:-4]
 
-            logger.info(
-                f"Day: {day}, Camera ID: {camera_id}, Date: {date}, Path: {image_path}"
-            )
+            logger.info(f"Day: {day}, Camera ID: {camera_id}, Date: {date}, Path: {image_path}")
 
             frame = Image.open(image_path).convert("RGB")
             # Initialiser l'Engine
