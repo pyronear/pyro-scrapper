@@ -1,11 +1,12 @@
 import glob
 import os
 import shutil
+from typing import Dict
 
 import cv2
 import numpy as np
 from tqdm import tqdm
-from typing import Dict
+
 
 def resize_image(image, max_width):
     """

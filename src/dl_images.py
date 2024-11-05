@@ -24,7 +24,9 @@ logging.basicConfig(level=logging.INFO)
 
 # Constants
 DURATION = "6h"  # options: 15m, 1h, 3h, 6h, 12h
-CAMERAS_URL = "https://s3-us-west-2.amazonaws.com/alertwildfire-data-public/all_cameras-v2.json"
+CAMERAS_URL = (
+    "https://s3-us-west-2.amazonaws.com/alertwildfire-data-public/all_cameras-v2.json"
+)
 HEADERS = {
     "Connection": "keep-alive",
     "Sec-Fetch-Site": "same-site",
@@ -122,7 +124,9 @@ def download_and_process_camera(cam_properties):
         url = f"https://ts1.alertwildfire.org/text/timelapse/?source={source}&preset={DURATION}"
         response = requests.get(url, headers=HEADERS, timeout=MAX_TIME)
 
-        logging.info(f"Successfully downloaded images for camera '{source}' in '{state}'.")
+        logging.info(
+            f"Successfully downloaded images for camera '{source}' in '{state}'."
+        )
         process_camera_images(response, state, source)
     except requests.exceptions.Timeout:
         logging.error(f"Timeout while processing camera '{source}'.")
@@ -142,7 +146,11 @@ def download_and_process_images(cameras_features):
     ) as pbar:
         futures = []
         for cameras_feature in cameras_features:
-            futures.append(executor.submit(download_and_process_camera, cameras_feature["properties"]))
+            futures.append(
+                executor.submit(
+                    download_and_process_camera, cameras_feature["properties"]
+                )
+            )
         for future in as_completed(futures):
             result = future.result()
             pbar.update(1)
@@ -163,7 +171,9 @@ def process_camera_images(response, state, source):
         Error messages if any exception occurs during the processing.
     """
     local_time = get_camera_local_time(state)
-    output_path = os.path.join(OUTPUT_BASE_PATH, "temp", local_time.strftime("%Y_%m_%d"))
+    output_path = os.path.join(
+        OUTPUT_BASE_PATH, "temp", local_time.strftime("%Y_%m_%d")
+    )
     source_path = os.path.join(output_path, source)
     os.makedirs(source_path, exist_ok=True)
     logging.info(f"Processing camera images for '{source}' into '{source_path}'.")
@@ -199,7 +209,9 @@ def sort_and_rename_images(source_path, local_time):
         if nb_imgs > 0:
             logging.info(f"Found {nb_imgs} images to rename.")
             dt = duration_to_seconds(DURATION) / nb_imgs
-            local_time = local_time - timedelta(hours=duration_to_seconds(DURATION) / 3600)
+            local_time = local_time - timedelta(
+                hours=duration_to_seconds(DURATION) / 3600
+            )
 
             for i, file in enumerate(imgs):
                 frame_time = local_time + timedelta(seconds=dt * i)

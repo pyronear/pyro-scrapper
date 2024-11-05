@@ -11,7 +11,9 @@ load_dotenv()
 
 OUTPUT_BASE_PATH = os.getenv("OUTPUT_PATH", "AWF_scrap")
 
-CAMERAS_URL = "https://s3-us-west-2.amazonaws.com/alertwildfire-data-public/all_cameras-v2.json"
+CAMERAS_URL = (
+    "https://s3-us-west-2.amazonaws.com/alertwildfire-data-public/all_cameras-v2.json"
+)
 
 HEADERS = {
     "Connection": "keep-alive",
