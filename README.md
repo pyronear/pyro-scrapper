@@ -20,6 +20,8 @@ Pyro-Scrapper is a specialized tool designed for scraping images from [Alert Wil
 Certainly! Here's the revised Usage section with the added code snippets:
 
 ## Installation and Usage
+
+### Locally
 - Clone the repository.
 - Ensure you have the required dependencies by installing them from `requirements.txt`.
 
@@ -40,6 +42,16 @@ python/split_cams.py
 
 These commands will initiate the image scraping and view point splitting.
 
+
+### Using the docker image
+
+First you will need to generate the credentials.json file according to the source you want to scrapp. 
+For the alertwildfire , you can use the src/generate_wildfire_config.py script.
+
+Then you have two choices : 
+1) using the pyro-devops dev env, copying the credentials.json file in the data/ folder and launching the 'make-etl' command
+2) filling your .env locally (API_URL) in order to use an external Pyro-API , filling the token part of the credentials.json and launching the command 'make run-etl' from this repo.
+
 ## Contributing
 
 Please refer to [`CONTRIBUTING`](CONTRIBUTING.md) if you wish to contribute to this project.
@@ -51,5 +63,3 @@ This project is developed and maintained by the repo owner and volunteers from [
 ## License
 
 Distributed under the Apache 2 License. See [`LICENSE`](LICENSE) for more information.
-
-
