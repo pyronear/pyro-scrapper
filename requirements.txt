@@ -1,8 +1,11 @@
 opencv-python
 tqdm
+types-tqdm
 requests
 python-dotenv
 pytz
+types-pytz
+Pillow
 
 #Style
 black
