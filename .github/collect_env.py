@@ -3,9 +3,9 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-"""
-Based on https://github.com/pytorch/pytorch/blob/master/torch/utils/collect_env.py
-This script outputs relevant system environment info
+"""Based on https://github.com/pytorch/pytorch/blob/master/torch/utils/collect_env.py.
+
+This script outputs relevant system environment info.
 Run it with `python collect_env.py`.
 """
 
@@ -20,9 +20,9 @@ from collections import namedtuple
 try:
     import pyroscrapper
 
-    scrapper_AVAILABLE = True
+    SCRAPPER_AVAILABLE = True
 except (ImportError, NameError, AttributeError):
-    scrapper_AVAILABLE = False
+    SCRAPPER_AVAILABLE = False
 
 try:
     import onnxruntime
@@ -47,10 +47,8 @@ SystemEnv = namedtuple(
 
 
 def run(command):
-    """Returns (return-code, stdout, stderr)"""
-    p = subprocess.Popen(
-        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
-    )
+    """Return (return-code, stdout, stderr)."""
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     output, err = p.communicate()
     rc = p.returncode
     if PY3:
@@ -61,7 +59,7 @@ def run(command):
 
 
 def run_and_read_all(run_lambda, command):
-    """Runs command using run_lambda; reads and returns entire output if rc is 0"""
+    """Run command using run_lambda and return entire output when rc is 0."""
     rc, out, _ = run_lambda(command)
     if rc != 0:
         return None
@@ -69,7 +67,7 @@ def run_and_read_all(run_lambda, command):
 
 
 def run_and_parse_first_match(run_lambda, command, regex):
-    """Runs command using run_lambda, returns the first regex match if it exists"""
+    """Run command using run_lambda and return the first regex match if it exists."""
     rc, out, _ = run_lambda(command)
     if rc != 0:
         return None
@@ -80,6 +78,7 @@ def run_and_parse_first_match(run_lambda, command, regex):
 
 
 def get_platform():
+    """Return normalized platform identifier."""
     if sys.platform.startswith("linux"):
         return "linux"
     elif sys.platform.startswith("win32"):
@@ -93,26 +92,27 @@ def get_platform():
 
 
 def get_mac_version(run_lambda):
+    """Return macOS version string if available."""
     return run_and_parse_first_match(run_lambda, "sw_vers -productVersion", r"(.*)")
 
 
 def get_windows_version(run_lambda):
+    """Return Windows version string if available."""
     return run_and_read_all(run_lambda, "wmic os get Caption | findstr /v Caption")
 
 
 def get_lsb_version(run_lambda):
-    return run_and_parse_first_match(
-        run_lambda, "lsb_release -a", r"Description:\t(.*)"
-    )
+    """Return Linux distribution description from lsb_release."""
+    return run_and_parse_first_match(run_lambda, "lsb_release -a", r"Description:\t(.*)")
 
 
 def check_release_file(run_lambda):
-    return run_and_parse_first_match(
-        run_lambda, "cat /etc/*-release", r'PRETTY_NAME="(.*)"'
-    )
+    """Return distribution description from release files."""
+    return run_and_parse_first_match(run_lambda, "cat /etc/*-release", r'PRETTY_NAME="(.*)"')
 
 
 def get_os(run_lambda):
+    """Return operating system description."""
     platform = get_platform()
 
     if platform == "win32" or platform == "cygwin":
@@ -142,9 +142,10 @@ def get_os(run_lambda):
 
 
 def get_env_info():
+    """Collect environment information values."""
     run_lambda = run
 
-    if scrapper_AVAILABLE:
+    if SCRAPPER_AVAILABLE:
         pyroscrapper_str = pyroscrapper.__version__
     else:
         pyroscrapper_str = "N/A"
@@ -173,6 +174,8 @@ Python version: {python_version}
 
 
 def pretty_str(envinfo):
+    """Return formatted environment information string."""
+
     def replace_nones(dct, replacement="Could not collect"):
         for key in dct.keys():
             if dct[key] is not None:
@@ -200,15 +203,17 @@ def pretty_str(envinfo):
 
 
 def get_pretty_env_info():
-    """Collects environment information for debugging purposes
+    """Collect environment information for debugging purposes.
 
     Returns:
         str: environment information
+
     """
     return pretty_str(get_env_info())
 
 
 def main():
+    """Entry point for collecting and printing environment info."""
     print("Collecting environment information...")
     output = get_pretty_env_info()
     print(output)

@@ -60,3 +60,9 @@ skip_glob = ["**/__init__.py"]
 [tool.pydocstyle]
 select = "D300,D301,D417"
 match = ".*\\.py"
+
+[tool.mypy]
+python_version = "3.11"
+files = [".github/collect_env.py"]
+exclude = ["^\\.venv"]
+ignore_missing_imports = true
