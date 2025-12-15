@@ -127,3 +127,4 @@ AWF_scrap*
 
 cameras.csv
 credentials.json
+**.DS_Store**
