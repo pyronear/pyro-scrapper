@@ -16,8 +16,9 @@ We use Poetry with the export plugin (already configured in `pyproject.toml`). T
 
 ## Running quality checks
 
-1) Export quality deps: `poetry export -f requirements.txt --without-hashes --only quality --output requirements-quality.txt`  
-2) Install them (in your venv): `python -m pip install -r requirements-quality.txt`  
+1) Export quality deps:  
+   `poetry export -f requirements.txt --without-hashes --only quality --output requirements-quality.txt`  
+2) Install them in your venv: `python -m pip install -r requirements-quality.txt`  
 3) Auto-fix lint/format: `make style`  
 4) Full check (lint + mypy): `make quality`
 
