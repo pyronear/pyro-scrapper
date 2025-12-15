@@ -1,0 +1,4 @@
+scrapy==2.13.3
+pytest
+pillow
+tqdm

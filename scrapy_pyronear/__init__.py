@@ -1,0 +1,1 @@
+"""Scrapy project package."""

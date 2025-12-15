@@ -16,11 +16,30 @@ We use Poetry with the export plugin (already configured in `pyproject.toml`). T
 
 ## Running quality checks
 
-1) Export quality deps:  
-   `poetry export -f requirements.txt --without-hashes --only quality --output requirements-quality.txt`  
-2) Install them in your venv: `python -m pip install -r requirements-quality.txt`  
-3) Auto-fix lint/format: `make style`  
-4) Full check (lint + mypy): `make quality`
+Copy/paste to match the CI style job (uses `uv` in a local venv):
+
+```bash
+# create or reuse .venv on Python 3.11 (matches CI)
+uv python install 3.11
+uv venv --python 3.11 .venv
+source .venv/bin/activate
+
+# export and install quality deps
+poetry export -f requirements.txt --without-hashes --only quality --output requirements-quality.txt
+uv pip install -r requirements-quality.txt
+
+# run the checks
+ruff format --check --diff .
+ruff check --diff .
+```
+
+For mypy (same deps as CI):
+
+```bash
+poetry export -f requirements.txt --without-hashes --with quality --output requirements-quality.txt
+uv pip install -r requirements-quality.txt
+mypy
+```
 
 ## Credits
 
