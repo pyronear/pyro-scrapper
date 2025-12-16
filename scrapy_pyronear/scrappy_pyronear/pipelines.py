@@ -6,19 +6,19 @@
 
 # useful for handling different item types with a single interface
 
+import os
+import time
+
 import scrapy
 from scrapy.pipelines.images import ImagesPipeline
 from tqdm import tqdm
-import os
-import time
-from twisted.internet.error import TimeoutError, TCPTimedOutError
 from twisted.internet.defer import TimeoutError as DeferTimeoutError
+from twisted.internet.error import TCPTimedOutError, TimeoutError
 from twisted.web.client import ResponseNeverReceived
 
 
 class AlertwestImagePipeline(ImagesPipeline):
-    """
-    Scrapy pipeline for downloading camera images.
+    """Scrapy pipeline for downloading camera images.
 
     This pipeline:
     - Downloads images from camera URLs provided in items.
@@ -47,8 +47,7 @@ class AlertwestImagePipeline(ImagesPipeline):
             self.progress_bar.close()
 
     def get_media_requests(self, item, info):
-        """
-        Generates Scrapy requests to download images, passing camera metadata.
+        """Generates Scrapy requests to download images, passing camera metadata.
 
         Args:
             item (dict): Dictionary containing image and camera metadata. Expected keys:
@@ -66,6 +65,7 @@ class AlertwestImagePipeline(ImagesPipeline):
 
         Side effects:
             Updates progress bar and counters for missing URLs.
+
         """
         if self.progress_bar is None:
             self.total = info.spider.total_cams

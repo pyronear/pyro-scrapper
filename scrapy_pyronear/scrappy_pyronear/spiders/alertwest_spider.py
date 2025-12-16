@@ -1,6 +1,7 @@
-import scrapy
 import json
 from datetime import datetime
+
+import scrapy
 from scrappy_pyronear.items import PyronearItem  # <<< import item propre
 
 # Execute the code

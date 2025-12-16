@@ -1,12 +1,11 @@
 from scrapy.logformatter import LogFormatter
-from twisted.internet.error import TimeoutError, TCPTimedOutError
 from twisted.internet.defer import TimeoutError as DeferTimeoutError
+from twisted.internet.error import TCPTimedOutError, TimeoutError
 from twisted.web.client import ResponseNeverReceived
 
 
 class SilentTimeoutLogFormatter(LogFormatter):
-    """
-    Custom log formatter that silences timeout-related errors to reduce log noise.
+    """Custom log formatter that silences timeout-related errors to reduce log noise.
 
     The following errors are ignored and not logged:
         - TimeoutError
