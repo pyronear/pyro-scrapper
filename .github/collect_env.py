@@ -3,11 +3,6 @@
 # This program is licensed under the Apache License 2.0.
 # See LICENSE or go to <https://www.apache.org/licenses/LICENSE-2.0> for full license details.
 
-"""
-Based on https://github.com/pytorch/pytorch/blob/master/torch/utils/collect_env.py
-This script outputs relevant system environment info
-Run it with `python collect_env.py`.
-"""
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
@@ -48,9 +43,7 @@ SystemEnv = namedtuple(
 
 def run(command):
     """Returns (return-code, stdout, stderr)"""
-    p = subprocess.Popen(
-        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
-    )
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     output, err = p.communicate()
     rc = p.returncode
     if PY3:
@@ -101,15 +94,11 @@ def get_windows_version(run_lambda):
 
 
 def get_lsb_version(run_lambda):
-    return run_and_parse_first_match(
-        run_lambda, "lsb_release -a", r"Description:\t(.*)"
-    )
+    return run_and_parse_first_match(run_lambda, "lsb_release -a", r"Description:\t(.*)")
 
 
 def check_release_file(run_lambda):
-    return run_and_parse_first_match(
-        run_lambda, "cat /etc/*-release", r'PRETTY_NAME="(.*)"'
-    )
+    return run_and_parse_first_match(run_lambda, "cat /etc/*-release", r'PRETTY_NAME="(.*)"')
 
 
 def get_os(run_lambda):
@@ -204,6 +193,7 @@ def get_pretty_env_info():
 
     Returns:
         str: environment information
+
     """
     return pretty_str(get_env_info())
 

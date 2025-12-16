@@ -43,6 +43,7 @@ coverage = "^7.4.0"
 line-length = 120
 target-version = "py311"
 preview = true
+extend-exclude = [".github"]
 
 [tool.ruff.lint]
 select = ["F", "E", "W", "I", "N", "D"]
