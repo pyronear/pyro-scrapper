@@ -1,15 +1,17 @@
-import scrapy
 import json
 from datetime import datetime
-from scrappy_pyronear.items import PyronearItem   # <<< import item propre
 
-# Execute the code 
+import scrapy
+from scrappy_pyronear.items import PyronearItem  # <<< import item propre
+
+# Execute the code
 # NORMAL : scrapy crawl alertwest
 # WITH DEBUG : scrapy crawl alertwest -s LOG_LEVEL=DEBUG
 
 # INDIVIDUAL PROPERTIES TO EXTRACT FROM THE API RESPONSE
-INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "camOffline","camName"]
+INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "camOffline", "camName"]
 API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
+
 
 class AlertwestSpider(scrapy.Spider):
     name = "alertwest"
@@ -35,27 +37,21 @@ class AlertwestSpider(scrapy.Spider):
 
         # Iterate over cameras and yield items
         for cam in data_cams:
-            timestamp = int(cam.get(short_key["camLastMoved"], '0'))
+            timestamp = int(cam.get(short_key["camLastMoved"], "0"))
             cam_id = cam.get(short_key["camId"], None)
             img_name = cam.get(short_key["Screenshot"], None)
             azimuth = cam.get(short_key["Azimuth"], None)
             cam_name = cam.get(short_key["camName"], None)
 
             # Construct image URL
-            if cam_id and img_name :
+            if cam_id and img_name:
                 date_path = datetime.now().strftime("%Y/%m/%d")
                 img_url = f"https://img.cdn.prod.alertwest.com/data/thumb/{cam_id}/{date_path}/{img_name}"
 
-            else :
+            else:
                 img_url = None
 
             # Create and yield the item
-            item = PyronearItem(
-                id=cam_id,
-                name=cam_name,
-                azimuth=azimuth,
-                last_moved=timestamp,
-                image_url=img_url
-            )
+            item = PyronearItem(id=cam_id, name=cam_name, azimuth=azimuth, last_moved=timestamp, image_url=img_url)
 
             yield item

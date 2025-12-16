@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=67.0.0", "wheel>=0.40.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.poetry]
+name = "pyro-scrapper"
+version = "0.1.0"
+description = "Scrape images from Alert Wildfire and prepare them for downstream analysis"
+authors = ["Pyronear <contact@pyronear.org>"]
+readme = "README.md"
+license = "Apache-2.0"
+repository = "https://github.com/pyronear/pyro-scrapper"
+keywords = ["scrapy", "scraping", "wildfire", "dataset"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+  "Topic :: Scientific/Engineering"
+]
+
+packages = [{ include = "pyro_scrapper", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+scrapy = "^2.13.4"
+
+[tool.poetry.group.quality.dependencies]
+ruff = "==0.14.9"
+black = "^24.3.0"
+isort = "^5.13.2"
+mypy = "^1.9.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"
+coverage = "^7.4.0"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+preview = true
+extend-exclude = [".github", "scrapy_pyronear/tests"]
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "N", "D"]
+ignore = ["E501", "COM812", "ISC001", "D203", "D213"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.isort]
+line_length = 120
+skip_glob = ["**/__init__.py"]
+
+[tool.pydocstyle]
+select = "D300,D301,D417"
+match = ".*\\.py"
+
+[tool.mypy]
+python_version = "3.11"
+files = [".github/collect_env.py"]
+exclude = ["^\\.venv"]
+ignore_missing_imports = true
