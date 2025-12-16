@@ -43,7 +43,7 @@ coverage = "^7.4.0"
 line-length = 120
 target-version = "py311"
 preview = true
-extend-exclude = [".github"]
+extend-exclude = [".github", "scrapy_pyronear/tests"]
 
 [tool.ruff.lint]
 select = ["F", "E", "W", "I", "N", "D"]
