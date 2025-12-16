@@ -15,6 +15,7 @@ from twisted.internet.error import TimeoutError, TCPTimedOutError
 from twisted.internet.defer import TimeoutError as DeferTimeoutError
 from twisted.web.client import ResponseNeverReceived
 
+
 class AlertwestImagePipeline(ImagesPipeline):
     """
     Scrapy pipeline for downloading camera images.
@@ -25,20 +26,23 @@ class AlertwestImagePipeline(ImagesPipeline):
     - Handles various failure cases, including timeouts, missing URLs, and cameras that are down.
     - Maintains counters for failed downloads, missing URLs, and timeouts, and reports them when the spider closes.
     """
+
     def open_spider(self, spider):
         self.time = time.time()
         self.spiderinfo = self.SpiderInfo(spider)
         self.total = getattr(spider, "total_cams", 0)
-        self.failed_cam = 0 # counter for failed downloads
-        self.no_url = 0 # counter for missing urls
+        self.failed_cam = 0  # counter for failed downloads
+        self.no_url = 0  # counter for missing urls
         self.timeout_cam = 0  # compteur des timeouts
         self.progress_bar = None
 
     def close_spider(self, spider):
         print(f"\nURL retrieved but camera is down for {self.failed_cam} cameras among {self.total} total cameras.")
-        print(f"Miss a parameter in the json to construct URL for {self.no_url} cameras among {self.total} total cameras.")
+        print(
+            f"Miss a parameter in the json to construct URL for {self.no_url} cameras among {self.total} total cameras."
+        )
         print(f"Timed out for {self.timeout_cam} cameras among {self.total} total cameras.")
-        print(f"Time taken: {(time.time() - self.time)/60:.2f} minutes")
+        print(f"Time taken: {(time.time() - self.time) / 60:.2f} minutes")
         if self.progress_bar:
             self.progress_bar.close()
 
@@ -69,11 +73,11 @@ class AlertwestImagePipeline(ImagesPipeline):
                 total=self.total,
                 desc="Downloading images 🚀 ",
                 bar_format="{l_bar}\033[92m{bar}\033[0m| {n_fmt}/{total_fmt} images",
-                unit="image"
+                unit="image",
             )
 
         url = item["image_url"]
-        if url :
+        if url:
             self.progress_bar.update(1)
             yield scrapy.Request(
                 url,
@@ -81,9 +85,9 @@ class AlertwestImagePipeline(ImagesPipeline):
                     "id": item["id"],
                     "azimuth": item["azimuth"],
                     "last_moved": item["last_moved"],
-                }
+                },
             )
-        else :
+        else:
             self.progress_bar.update(1)
             self.no_url += 1
 
