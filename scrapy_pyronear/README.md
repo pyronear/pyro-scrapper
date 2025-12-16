@@ -1,55 +1,176 @@
-# Pyronear
-Pipeline de scrapping d'images de caméras de surveillance pour entrainement d'un modèle de détection de départs de feu.
+## PIPELINE DE SCRAPPING D'IMAGES ALERTWEST
 
-### Commande pour se placer dans le bon dossier 
+Pipeline de scraping d'images de caméras de surveillance du site alertwest.org pour l'entraînement d'un modèle de détection de départs de feu.
 
+## Prérequis
+
+- **Python 3.12.0**
+- **Conda** ou **pip** pour la gestion des dépendances
+
+
+## Installation
+
+```bash
+conda create --name pyronear python=3.12
+conda activate pyronear
+pip install -r requirements.txt
 ```
-cd Pyronear
-```
 
-### Lancer le scrapping des images 
+## Démarrage rapide
 
-```
+### Lancer le scraping
+
+```bash
 scrapy crawl alertwest
 ```
 
-### Utiliser les paramètres pour ajuster le scrapping
+### Lancer avec paramètres personnalisés
 
-```
-scrapy crawl alertwest -s
-    DOWNLOAD_TIMEOUT=3 # Temps maximum (en secondes) pour télécharger une image
-    CONCURRENT_ITEMS=100 # Nombre d'items traités en parallèle
+```bash
+scrapy crawl alertwest -s DOWNLOAD_TIMEOUT=3 CONCURRENT_ITEMS=100
 ```
 
-### Lancer le scrapping des images ET enregistrement du json 
+### Paramètres disponibles cf `settings.py`
 
-```
+Exemples :
+
+| Paramètre | Défaut | Description |
+|-----------|--------|-------------|
+| `DOWNLOAD_TIMEOUT` | 2s | Délai maximal pour télécharger une image |
+| `CONCURRENT_ITEMS` | 400 | Nombre d'items traités en parallèle dans la pipeline |
+| `CONCURRENT_REQUESTS` | 64 | Nombre maximal de requêtes HTTP simultanées |
+| `CONCURRENT_REQUESTS_PER_DOMAIN` | 32 | Requêtes simultanées par domaine |
+
+
+### Exporter les métadonnées en JSON
+
+```bash
 scrapy crawl alertwest -o alertwest.json
 ```
-## Lancer les tests 
 
-```
-pytest -v .\test\test_alertwest_spider.py
-```
+### Mode debug
 
-## Lancer en mode debug
-
-```
+```bash
 scrapy crawl alertwest -s LOG_LEVEL=DEBUG
 ```
 
-## Structure du dépôt
+## Tests
 
-Ce dépôt contient un mini-projet Scrapy pour récupérer des images issues de l'API AlertWest et les stocker localement pour l'entraînement.
+```bash
+# Bash / Linux / macOS
+pytest -v tests/
 
-- `scrappy_pyronear/` : package Scrapy principal
-    - `spiders/alertwest_spider.py` : spider qui interroge l'API AlertWest, parse le JSON et yield des items (`PyronearItem`).
-    - `items.py` : définition de l'item `PyronearItem` (champs : `id`, `name`, `azimuth`, `last_moved`, `image_url`, `valid_url`).
-    - `pipelines.py` : pipeline `AlertwestImagePipeline` qui télécharge les images, gère la progression et les erreurs, et crée l'arborescence de stockage.
-    - `settings.py` : réglages Scrapy (concurrency, timeouts, export JSON, log formatter, etc.).
-- `images/` : répertoire de destination (généré par le pipeline) contenant les dossiers par `cam_id` et `azimuth`.
-- `alertwest.json` : export JSON possible des métadonnées (via le feed ou option `-o`).
-- `tests/` : tests unitaires.
+# Windows PowerShell
+pytest -v .\tests\
+```
+
+## Architecture
+
+```
+scrappy_pyronear/
+├── spiders/
+│   └── alertwest_spider.py      # Spider principal
+├── items.py                      # Définition des items
+├── pipelines.py                  # Pipeline de téléchargement d'images
+├── settings.py                   # Configuration Scrapy
+└── logformatter.py               # Formatter personnalisé pour les logs
+images/                           # Répertoire de sortie (généré)
+tests/                            # Tests unitaires
+alertwest.json                    # Export JSON des métadonnées (optionnel)
+```
+
+## Mécanisme de scraping
+
+### 1. Spider (`alertwest_spider.py`)
+
+- Envoie une requête GET vers l'API AlertWest.
+- Parse la réponse JSON pour extraire :
+  - `key_list` : mapping des clés courtes vers les noms de propriétés.
+  - `data_cams` : liste des caméras.
+- Mappe les propriétés intéressantes (Azimuth, camId, Screenshot, camLastMoved, etc.) vers leurs clés respectives.
+- Pour chaque caméra, construit l'URL d'image au format :
+  ```
+  https://img.cdn.prod.alertwest.com/data/thumb/{cam_id}/{YYYY/MM/DD}/{img_name}
+  ```
+- Yield des items `PyronearItem` avec métadonnées et URL.
+
+### 2. Items (`items.py`)
+
+`PyronearItem` contient les champs :
+- `id` : identifiant unique de la caméra
+- `name` : nom de la caméra
+- `azimuth` : orientation de la caméra
+- `last_moved` : timestamp du dernier mouvement
+- `image_url` : URL de l'image à télécharger
+- `valid_url` : indicateur de validité de l'URL
+
+### 3. Pipeline (`pipelines.py`)
+
+Hérite de `scrapy.pipelines.images.ImagesPipeline` et :
+
+| Méthode | Rôle |
+|---------|------|
+| `open_spider()` | Initialise les compteurs, timers et barre de progression |
+| `get_media_requests()` | Génère les requêtes de téléchargement d'images en parallèle |
+| `media_failed()` | Capture les erreurs (timeouts, connexions perdues) et met à jour les compteurs |
+| `file_path()` | Définit la structure de stockage : `{cam_id}/{azimuth}/{cam_id}.jpg` |
+| `close_spider()` | Affiche un résumé (échecs, URLs manquantes, temps écoulé) |
+
+### 4. Optimisations de concurrence
+
+- `CONCURRENT_REQUESTS = 64` : limite globale pour éviter de surcharger le réseau
+- `CONCURRENT_REQUESTS_PER_DOMAIN = 32` : limite par domaine pour respecter les serveurs
+- `CONCURRENT_ITEMS = 400` : traitement parallèle des items dans la pipeline
+- `RETRY_ENABLED = False` : pas de retry sur les timeouts (gagne du temps)
+- `DOWNLOAD_TIMEOUT = 2s` : timeout agressif pour favoriser la vitesse
+
+### 5. Gestion des erreurs
+
+Un `LogFormatter` personnalisé silencieux les logs de timeout pour garder une sortie propre. Les erreurs sont comptabilisées :
+- **Timeouts** : images non téléchargées à cause du délai
+- **Caméras down** : serveur a rejeté la requête (HTTP 4xx/5xx)
+- **URLs manquantes** : paramètres manquants dans la réponse JSON
+
+## Configuration
+
+Tous les paramètres Scrapy se trouvent dans `settings.py`. Les principaux :
+
+```python
+CONCURRENT_REQUESTS = 64                    # Requêtes HTTP simultanées
+CONCURRENT_ITEMS = 400                      # Items en parallèle
+DOWNLOAD_TIMEOUT = 2                        # Timeout (secondes)
+RETRY_ENABLED = False                       # Pas de retry
+LOG_FORMATTER = "scrappy_pyronear.logformatter.SilentTimeoutLogFormatter"
+```
+
+## Exemple de sortie
+
+```
+Downloading images 🚀 : 100%|█████████████████████████████| 11702/11702 images
+
+URL retrieved but camera is down for 1524 cameras among 11702 total cameras.
+Miss a parameter in the json to construct URL for 999 cameras among 11702 total cameras.
+Timed out for 45 cameras among 11702 total cameras.
+Time taken: 2.53 minutes
+```
+
+## Dépannage
+
+### Scraping lent
+
+Augmentez les paramètres de concurrence :
+```bash
+scrapy crawl alertwest -s CONCURRENT_REQUESTS=128 CONCURRENT_ITEMS=500
+```
+
+### Trop de timeouts
+
+Augmentez le délai :
+```bash
+scrapy crawl alertwest -s DOWNLOAD_TIMEOUT=10
+```
+
+
 
 ## Mécanisme de scraping (détail technique)
 

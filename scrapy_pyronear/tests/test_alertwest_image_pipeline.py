@@ -20,6 +20,7 @@ def test_get_media_requests_with_url(monkeypatch):
 
     item = PyronearItem(
         id="CAM001",
+        name = "Test Camera",
         azimuth=120,
         last_moved=160000,
         image_url="http://example.com/img.jpg"
@@ -34,6 +35,9 @@ def test_get_media_requests_with_url(monkeypatch):
     assert req.meta["id"] == "CAM001"
     assert req.meta["azimuth"] == 120
     assert req.meta["last_moved"] == 160000
+    assert "scraped_at" in req.meta
+    assert isinstance(req.meta["scraped_at"], str)
+    assert len(req.meta["scraped_at"]) > 0
 
 def test_file_path():
     '''
@@ -46,8 +50,9 @@ def test_file_path():
         request = scrapy.Request("http://example.com/img.jpg", meta={
             "id": item["id"],
             "azimuth": item["azimuth"],
-            "last_moved": item["last_moved"]
+            "last_moved": item["last_moved"],
+            "scraped_at": "20250101_120000_123456"
         })
 
         path = pipeline.file_path(request, item=item)
-        assert path == os.path.join("CAM1", "90", "CAM1.jpg")
+        assert path == os.path.join("CAM1", "90", "CAM1_20250101_120000_123456.jpg")
