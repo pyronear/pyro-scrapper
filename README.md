@@ -24,8 +24,8 @@ uv pip sync requirements-dev.txt
 The following commands reproduce the quality jobs defined in `.github/workflows/style.yml`:
 
 ```bash
-ruff format --check --diff .
-ruff check --diff .
+ruff format --check --diff scrapy_pyronear
+ruff check --diff scrapy_pyronear
 mypy
 ```
 
