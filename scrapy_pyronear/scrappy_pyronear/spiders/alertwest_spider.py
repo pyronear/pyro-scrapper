@@ -46,7 +46,7 @@ class AlertwestSpider(scrapy.Spider):
             # Construct image URL
             if cam_id and img_name:
                 date_path = datetime.now().strftime("%Y/%m/%d")
-                img_url = f"https://img.cdn.prod.alertwest.com/data/thumb/{cam_id}/{date_path}/{img_name}"
+                img_url = f"https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{date_path}/{img_name}"
 
             else:
                 img_url = None

@@ -88,7 +88,7 @@ class AlertwestImagePipeline(ImagesPipeline):
                 meta={
                     "id": item["id"],
                     "azimuth": item["azimuth"],
-                    "last_moved": item["last_moved"],
+                    # "last_moved": item["last_moved"],
                     "scraped_at": item.get("scraped_at", scraped_at)
                 }
             )
@@ -114,4 +114,4 @@ class AlertwestImagePipeline(ImagesPipeline):
         scraped_at = str(meta.get("scraped_at") or "unknown")
         filename = f"{cam_id}_{scraped_at}.jpg"
 
-        return os.path.join(cam_id, azimuth, filename)# Define your item pipelines here
+        return os.path.join(cam_id, azimuth, filename)

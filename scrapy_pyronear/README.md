@@ -131,6 +131,18 @@ Un `LogFormatter` personnalisé silencieux les logs de timeout pour garder une s
 - **Caméras down** : serveur a rejeté la requête (HTTP 4xx/5xx)
 - **URLs manquantes** : paramètres manquants dans la réponse JSON
 
+### 6. Arbore de stockage des images
+
+```
+images/
+└── {cam_id}/
+      └── {azimuth}/
+            └── {cam_id}_{scraping_timestamp}.jpg
+                 
+            
+
+```
+
 ## Configuration
 
 Tous les paramètres Scrapy se trouvent dans `settings.py`. Les principaux :
