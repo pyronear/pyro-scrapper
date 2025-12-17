@@ -88,7 +88,7 @@ class AlertwestImagePipeline(ImagesPipeline):
                 meta={
                     "id": item["id"],
                     "azimuth": item["azimuth"],
-                    # "last_moved": item["last_moved"],
+                    "last_moved": item.get("last_moved"),
                     "scraped_at": item.get("scraped_at", scraped_at)
                 }
             )
