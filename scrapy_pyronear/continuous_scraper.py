@@ -1,5 +1,4 @@
-"""
-Script de scraping continu pour AlertWest.
+"""Script de scraping continu pour AlertWest.
 
 Ce script lance la spider alertwest de manière continue avec un intervalle
 configurable entre chaque exécution.
@@ -31,11 +30,11 @@ class ContinuousScraper:
     """Gestionnaire de scraping continu."""
 
     def __init__(self, interval_seconds=30):
-        """
-        Initialise le scraper continu.
+        """Initialise le scraper continu.
 
         Args:
             interval_seconds (int): Intervalle en secondes entre chaque scraping
+
         """
         self.interval_seconds = interval_seconds
         self.running = True
@@ -46,16 +45,16 @@ class ContinuousScraper:
         signal.signal(signal.SIGTERM, self._signal_handler)
 
     def _signal_handler(self, signum, frame):
-        """Handles stop signals (Ctrl+C, etc.)."""
+        """Handle stop signals (Ctrl+C, etc.)."""
         logger.info("Stop signal received. Stopping after the current cycle...")
         self.running = False
 
     def run_spider_once(self):
-        """
-        Lance la spider une seule fois via subprocess.
+        """Lance la spider une seule fois via subprocess.
 
         Returns:
             bool: True si le scraping s'est bien déroulé, False sinon
+
         """
         try:
             logger.info(f"🚀 Start of scraping cycle #{self.scrape_count + 1}")
@@ -92,10 +91,7 @@ class ContinuousScraper:
             cycle_start = time.time()
 
             # Lance un cycle de scraping
-            success = self.run_spider_once()
-
-            if not self.running:
-                break
+            self.run_spider_once()
 
             # Calcule le temps d'attente avant le prochain cycle
             elapsed = time.time() - cycle_start

@@ -1,3 +1,5 @@
+"""Scrapy spider and downloader middleware definitions."""
+
 # Define here the models for your spider middleware
 #
 # See documentation in:
@@ -8,18 +10,22 @@ from scrapy import signals
 
 
 class PyronearSpiderMiddleware:
+    """Spider middleware for Pyronear scraper."""
+
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the
     # passed objects.
 
     @classmethod
     def from_crawler(cls, crawler):
+        """Create spider middleware from crawler."""
         # This method is used by Scrapy to create your spiders.
         s = cls()
         crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
         return s
 
     def process_spider_input(self, response, spider):
+        """Process responses before they reach the spider."""
         # Called for each response that goes through the spider
         # middleware and into the spider.
 
@@ -27,6 +33,7 @@ class PyronearSpiderMiddleware:
         return None
 
     def process_spider_output(self, response, result, spider):
+        """Process items/requests returned from the spider."""
         # Called with the results returned from the Spider, after
         # it has processed the response.
 
@@ -35,6 +42,7 @@ class PyronearSpiderMiddleware:
             yield i
 
     def process_spider_exception(self, response, exception, spider):
+        """Handle exceptions raised during spider processing."""
         # Called when a spider or process_spider_input() method
         # (from other spider middleware) raises an exception.
 
@@ -42,6 +50,7 @@ class PyronearSpiderMiddleware:
         pass
 
     def process_start_requests(self, start_requests, spider):
+        """Process spider start requests."""
         # Called with the start requests of the spider, and works
         # similarly to the process_spider_output() method, except
         # that it doesn’t have a response associated.
@@ -51,22 +60,27 @@ class PyronearSpiderMiddleware:
             yield r
 
     def spider_opened(self, spider):
+        """Log when spider is opened."""
         spider.logger.info("Spider opened: %s" % spider.name)
 
 
 class PyronearDownloaderMiddleware:
+    """Downloader middleware for Pyronear scraper."""
+
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the downloader middleware does not modify the
     # passed objects.
 
     @classmethod
     def from_crawler(cls, crawler):
+        """Create downloader middleware from crawler."""
         # This method is used by Scrapy to create your spiders.
         s = cls()
         crawler.signals.connect(s.spider_opened, signal=signals.spider_opened)
         return s
 
     def process_request(self, request, spider):
+        """Process requests before they are sent to the downloader."""
         # Called for each request that goes through the downloader
         # middleware.
 
@@ -79,6 +93,7 @@ class PyronearDownloaderMiddleware:
         return None
 
     def process_response(self, request, response, spider):
+        """Process responses before they reach the spider."""
         # Called with the response returned from the downloader.
 
         # Must either;
@@ -88,6 +103,7 @@ class PyronearDownloaderMiddleware:
         return response
 
     def process_exception(self, request, exception, spider):
+        """Handle exceptions raised during download processing."""
         # Called when a download handler or a process_request()
         # (from other downloader middleware) raises an exception.
 
@@ -98,4 +114,5 @@ class PyronearDownloaderMiddleware:
         pass
 
     def spider_opened(self, spider):
+        """Log when spider is opened."""
         spider.logger.info("Spider opened: %s" % spider.name)
