@@ -1,3 +1,5 @@
+"""Scrapy pipelines for image downloading."""
+
 # Define your item pipelines here
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
@@ -8,6 +10,7 @@
 
 import os
 import time
+from datetime import datetime
 
 import scrapy
 from scrapy.pipelines.images import ImagesPipeline
@@ -28,6 +31,7 @@ class AlertwestImagePipeline(ImagesPipeline):
     """
 
     def open_spider(self, spider):
+        """Initialize pipeline when spider opens."""
         self.time = time.time()
         self.spiderinfo = self.SpiderInfo(spider)
         self.total = getattr(spider, "total_cams", 0)
@@ -37,6 +41,7 @@ class AlertwestImagePipeline(ImagesPipeline):
         self.progress_bar = None
 
     def close_spider(self, spider):
+        """Print summary statistics when spider closes."""
         print(f"\nURL retrieved but camera is down for {self.failed_cam} cameras among {self.total} total cameras.")
         print(
             f"Miss a parameter in the json to construct URL for {self.no_url} cameras among {self.total} total cameras."
@@ -47,7 +52,7 @@ class AlertwestImagePipeline(ImagesPipeline):
             self.progress_bar.close()
 
     def get_media_requests(self, item, info):
-        """Generates Scrapy requests to download images, passing camera metadata.
+        """Generate Scrapy requests to download images, passing camera metadata.
 
         Args:
             item (dict): Dictionary containing image and camera metadata. Expected keys:
@@ -77,14 +82,22 @@ class AlertwestImagePipeline(ImagesPipeline):
             )
 
         url = item["image_url"]
+
+        # Skip thermal cameras
+        if "thermal" in item["name"].lower():
+            self.progress_bar.update(1)
+            return
+
         if url:
             self.progress_bar.update(1)
+            scraped_at = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             yield scrapy.Request(
                 url,
                 meta={
                     "id": item["id"],
                     "azimuth": item["azimuth"],
-                    "last_moved": item["last_moved"],
+                    "last_moved": item.get("last_moved"),
+                    "scraped_at": item.get("scraped_at", scraped_at),
                 },
             )
         else:
@@ -92,6 +105,7 @@ class AlertwestImagePipeline(ImagesPipeline):
             self.no_url += 1
 
     def media_failed(self, failure, request, info):
+        """Handle failed media downloads and count error types."""
         # Count timeouts separately, silence their log via custom LogFormatter
         if failure.check(TimeoutError, TCPTimedOutError, ResponseNeverReceived, DeferTimeoutError):
             self.timeout_cam += 1
@@ -100,11 +114,13 @@ class AlertwestImagePipeline(ImagesPipeline):
         return None
 
     def file_path(self, request, response=None, info=None, item=None):
-
+        """Determine the file path for saving downloaded images."""
+        meta = request.meta
         cam_id = str(item.get("id"))
 
         # If there is no azimuth, it is replaced by unknown
         azimuth = str(item.get("azimuth") or "unknown")
-        filename = f"{cam_id}.jpg"
+        scraped_at = str(meta.get("scraped_at") or "unknown")
+        filename = f"{cam_id}_{scraped_at}.jpg"
 
         return os.path.join(cam_id, azimuth, filename)

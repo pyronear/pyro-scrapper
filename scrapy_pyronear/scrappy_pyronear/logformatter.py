@@ -1,3 +1,5 @@
+"""Custom Scrapy log formatter to silence timeout errors."""
+
 from scrapy.logformatter import LogFormatter
 from twisted.internet.defer import TimeoutError as DeferTimeoutError
 from twisted.internet.error import TCPTimedOutError, TimeoutError
@@ -17,6 +19,7 @@ class SilentTimeoutLogFormatter(LogFormatter):
     """
 
     def download_error(self, failure, request, spider):
+        """Handle download errors, silencing timeout errors."""
         # Ignore timeouts: aucun log émis pour ces erreurs
         if failure.check(TimeoutError, TCPTimedOutError, ResponseNeverReceived, DeferTimeoutError):
             return None

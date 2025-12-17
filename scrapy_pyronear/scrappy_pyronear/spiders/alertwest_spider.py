@@ -1,3 +1,5 @@
+"""AlertWest spider for scraping camera images."""
+
 import json
 from datetime import datetime
 
@@ -14,11 +16,14 @@ API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
 
 
 class AlertwestSpider(scrapy.Spider):
+    """Spider to scrape camera data from AlertWest API."""
+
     name = "alertwest"
     start_urls = [API_URL]
 
     # automatically called when the spider is opened
     def parse(self, response):
+        """Parse the API response and extract camera items."""
         # Fetch the JSON data
         data = json.loads(response.text)
 
@@ -46,7 +51,7 @@ class AlertwestSpider(scrapy.Spider):
             # Construct image URL
             if cam_id and img_name:
                 date_path = datetime.now().strftime("%Y/%m/%d")
-                img_url = f"https://img.cdn.prod.alertwest.com/data/thumb/{cam_id}/{date_path}/{img_name}"
+                img_url = f"https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{date_path}/{img_name}"
 
             else:
                 img_url = None
