@@ -1,3 +1,5 @@
+"""Scrapy pipelines for image downloading."""
+
 # Define your item pipelines here
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
@@ -6,19 +8,20 @@
 
 # useful for handling different item types with a single interface
 
-import scrapy
-from scrapy.pipelines.images import ImagesPipeline
-from tqdm import tqdm
 import os
 import time
 from datetime import datetime
-from twisted.internet.error import TimeoutError, TCPTimedOutError
+
+import scrapy
+from scrapy.pipelines.images import ImagesPipeline
+from tqdm import tqdm
 from twisted.internet.defer import TimeoutError as DeferTimeoutError
+from twisted.internet.error import TCPTimedOutError, TimeoutError
 from twisted.web.client import ResponseNeverReceived
 
+
 class AlertwestImagePipeline(ImagesPipeline):
-    """
-    Scrapy pipeline for downloading camera images.
+    """Scrapy pipeline for downloading camera images.
 
     This pipeline:
     - Downloads images from camera URLs provided in items.
@@ -26,26 +29,30 @@ class AlertwestImagePipeline(ImagesPipeline):
     - Handles various failure cases, including timeouts, missing URLs, and cameras that are down.
     - Maintains counters for failed downloads, missing URLs, and timeouts, and reports them when the spider closes.
     """
+
     def open_spider(self, spider):
+        """Initialize pipeline when spider opens."""
         self.time = time.time()
         self.spiderinfo = self.SpiderInfo(spider)
         self.total = getattr(spider, "total_cams", 0)
-        self.failed_cam = 0 # counter for failed downloads
-        self.no_url = 0 # counter for missing urls
+        self.failed_cam = 0  # counter for failed downloads
+        self.no_url = 0  # counter for missing urls
         self.timeout_cam = 0  # compteur des timeouts
         self.progress_bar = None
 
     def close_spider(self, spider):
+        """Print summary statistics when spider closes."""
         print(f"\nURL retrieved but camera is down for {self.failed_cam} cameras among {self.total} total cameras.")
-        print(f"Miss a parameter in the json to construct URL for {self.no_url} cameras among {self.total} total cameras.")
+        print(
+            f"Miss a parameter in the json to construct URL for {self.no_url} cameras among {self.total} total cameras."
+        )
         print(f"Timed out for {self.timeout_cam} cameras among {self.total} total cameras.")
-        print(f"Time taken: {(time.time() - self.time)/60:.2f} minutes")
+        print(f"Time taken: {(time.time() - self.time) / 60:.2f} minutes")
         if self.progress_bar:
             self.progress_bar.close()
 
     def get_media_requests(self, item, info):
-        """
-        Generates Scrapy requests to download images, passing camera metadata.
+        """Generate Scrapy requests to download images, passing camera metadata.
 
         Args:
             item (dict): Dictionary containing image and camera metadata. Expected keys:
@@ -63,6 +70,7 @@ class AlertwestImagePipeline(ImagesPipeline):
 
         Side effects:
             Updates progress bar and counters for missing URLs.
+
         """
         if self.progress_bar is None:
             self.total = info.spider.total_cams
@@ -70,17 +78,17 @@ class AlertwestImagePipeline(ImagesPipeline):
                 total=self.total,
                 desc="Downloading images 🚀 ",
                 bar_format="{l_bar}\033[92m{bar}\033[0m| {n_fmt}/{total_fmt} images",
-                unit="image"
+                unit="image",
             )
 
         url = item["image_url"]
 
         # Skip thermal cameras
-        if "thermal" in item['name'].lower():
+        if "thermal" in item["name"].lower():
             self.progress_bar.update(1)
             return
 
-        if url :
+        if url:
             self.progress_bar.update(1)
             scraped_at = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             yield scrapy.Request(
@@ -88,15 +96,16 @@ class AlertwestImagePipeline(ImagesPipeline):
                 meta={
                     "id": item["id"],
                     "azimuth": item["azimuth"],
-                    # "last_moved": item["last_moved"],
-                    "scraped_at": item.get("scraped_at", scraped_at)
-                }
+                    "last_moved": item.get("last_moved"),
+                    "scraped_at": item.get("scraped_at", scraped_at),
+                },
             )
-        else :
+        else:
             self.progress_bar.update(1)
             self.no_url += 1
 
     def media_failed(self, failure, request, info):
+        """Handle failed media downloads and count error types."""
         # Count timeouts separately, silence their log via custom LogFormatter
         if failure.check(TimeoutError, TCPTimedOutError, ResponseNeverReceived, DeferTimeoutError):
             self.timeout_cam += 1
@@ -105,7 +114,7 @@ class AlertwestImagePipeline(ImagesPipeline):
         return None
 
     def file_path(self, request, response=None, info=None, item=None):
-
+        """Determine the file path for saving downloaded images."""
         meta = request.meta
         cam_id = str(item.get("id"))
 
