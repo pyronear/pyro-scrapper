@@ -4,22 +4,28 @@ import json
 from datetime import datetime
 
 import scrapy
-from scrappy_pyronear.items import PyronearItem  # <<< import item propre
+from scrappy_pyronear.items import PyronearItem
 
 # Execute the code
 # NORMAL : scrapy crawl alertwest
 # WITH DEBUG : scrapy crawl alertwest -s LOG_LEVEL=DEBUG
+# WITH RASPBERRY PARAMETERS : scrapy crawl alertwest -a n_raspberry=2 -a raspberry_id=0
+
 
 # INDIVIDUAL PROPERTIES TO EXTRACT FROM THE API RESPONSE
 INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "camOffline", "camName", "providerName"]
 API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
-
 
 class AlertwestSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
 
     name = "alertwest"
     start_urls = [API_URL]
+
+    def __init__(self, n_raspberry=1, raspberry_id=0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.n_raspberry = int(n_raspberry)
+        self.raspberry_id = int(raspberry_id)
 
     def clean_cameras_data(self, short_key, data_cams):
         """Cleans the JSON data by keeping only relevant items"""
@@ -50,6 +56,18 @@ class AlertwestSpider(scrapy.Spider):
             cleaned_json.append(cam)
 
         return cleaned_json, thermal_cams, dot_cams, missing_params
+    
+    def split_json (self, data) :
+        """Splits the JSON data for distributed scraping across multiple Raspberry Pi"""
+
+        splitted_json = []
+
+        # Iterate over cameras and keep only those assigned to this Raspberry Pi
+        for index, cam in enumerate(data):
+            if index % self.n_raspberry == self.raspberry_id:
+                splitted_json.append(cam)
+
+        return splitted_json
 
     # automatically called when the spider is opened
     def parse(self, response):
@@ -73,11 +91,14 @@ class AlertwestSpider(scrapy.Spider):
         print(f"Skipped {thermal_cams} thermal cameras among {len(data_cams)} total cameras.")
         print(f"Skipped {dot_cams} DOT cameras among {len(data_cams)} total cameras.")
         print(f"Miss a parameter in the json to construct URL for {missing_params} cameras among {len(data_cams)} total cameras.")
+        print(f"Total relevant cameras after cleaning: {len(cleaned_data)}")
     
-        self.total_relevant_cams = len(cleaned_data)
+        final_data = self.split_json(cleaned_data)
+        print(f"Total relevant cameras for this Raspberry Pi (ID: {self.raspberry_id} / Total: {self.n_raspberry}): {len(final_data)}")
+        self.total_relevant_cams = len(final_data)
 
         # Iterate over cameras and yield items
-        for cam in cleaned_data:
+        for cam in final_data:
             timestamp = int(cam.get(short_key["camLastMoved"], "0"))
             cam_id = cam.get(short_key["camId"], None)
             img_name = cam.get(short_key["Screenshot"], None)
