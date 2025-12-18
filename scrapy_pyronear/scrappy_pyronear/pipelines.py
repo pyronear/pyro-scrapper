@@ -19,7 +19,6 @@ from twisted.internet.defer import TimeoutError as DeferTimeoutError
 from twisted.internet.error import TCPTimedOutError, TimeoutError
 from twisted.web.client import ResponseNeverReceived
 
-
 class AlertwestImagePipeline(ImagesPipeline):
     """Scrapy pipeline for downloading camera images.
 
@@ -38,6 +37,8 @@ class AlertwestImagePipeline(ImagesPipeline):
         self.failed_cam = 0  # counter for failed downloads
         self.no_url = 0  # counter for missing urls
         self.timeout_cam = 0  # compteur des timeouts
+        self.thermal_cam = 0  # compteur des caméras thermiques
+        self.dot_cam = 0  # compteur des caméras DOT
         self.progress_bar = None
 
     def close_spider(self, spider):
@@ -46,6 +47,8 @@ class AlertwestImagePipeline(ImagesPipeline):
         print(
             f"Miss a parameter in the json to construct URL for {self.no_url} cameras among {self.total} total cameras."
         )
+        print(f"Skipped {self.thermal_cam} thermal cameras among {self.total} total cameras.")
+        print(f"Skipped {self.dot_cam} DOT cameras among {self.total} total cameras.")
         print(f"Timed out for {self.timeout_cam} cameras among {self.total} total cameras.")
         print(f"Time taken: {(time.time() - self.time) / 60:.2f} minutes")
         if self.progress_bar:
@@ -86,6 +89,13 @@ class AlertwestImagePipeline(ImagesPipeline):
         # Skip thermal cameras
         if "thermal" in item["name"].lower():
             self.progress_bar.update(1)
+            self.thermal_cam += 1
+            return
+        
+        # Skip DOT cameras
+        if "dot" in item["provider"].lower():
+            self.progress_bar.update(1)
+            self.dot_cam += 1
             return
 
         if url:
