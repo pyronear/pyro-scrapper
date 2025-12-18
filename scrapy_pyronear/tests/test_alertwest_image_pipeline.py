@@ -14,7 +14,7 @@ def test_get_media_requests_with_url(monkeypatch):
     '''
     with tempfile.TemporaryDirectory() as tmpdir:
         pipeline = AlertwestImagePipeline(store_uri=f"file://{tmpdir}")
-    spider = type("obj", (object,), {"total_cams": 1})
+    spider = type("obj", (object,), {"total_relevant_cams": 1})
 
     pipeline.open_spider(spider)
 
