@@ -19,6 +19,7 @@ from twisted.internet.defer import TimeoutError as DeferTimeoutError
 from twisted.internet.error import TCPTimedOutError, TimeoutError
 from twisted.web.client import ResponseNeverReceived
 
+
 class AlertwestImagePipeline(ImagesPipeline):
     """Scrapy pipeline for downloading camera images.
 

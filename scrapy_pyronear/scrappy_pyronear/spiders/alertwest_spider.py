@@ -16,6 +16,7 @@ from scrappy_pyronear.items import PyronearItem
 INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "camOffline", "camName", "providerName"]
 API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
 
+
 class AlertwestSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
 
@@ -23,13 +24,13 @@ class AlertwestSpider(scrapy.Spider):
     start_urls = [API_URL]
 
     def __init__(self, n_raspberry=1, raspberry_id=0, *args, **kwargs):
+        """Initialize the spider with Raspberry Pi distribution parameters."""
         super().__init__(*args, **kwargs)
         self.n_raspberry = int(n_raspberry)
         self.raspberry_id = int(raspberry_id)
 
     def clean_cameras_data(self, short_key, data_cams):
-        """Cleans the JSON data by keeping only relevant items"""
-
+        """Clean the JSON data by keeping only relevant items."""
         cleaned_json = []
         thermal_cams = 0
         dot_cams = 0
@@ -41,7 +42,7 @@ class AlertwestSpider(scrapy.Spider):
             img_name = cam.get(short_key["Screenshot"], None)
             cam_name = cam.get(short_key["camName"], None)
             provider = cam.get(short_key["providerName"], None)
-            
+
             if "thermal" in cam_name.lower():
                 thermal_cams += 1
                 continue
@@ -56,10 +57,9 @@ class AlertwestSpider(scrapy.Spider):
             cleaned_json.append(cam)
 
         return cleaned_json, thermal_cams, dot_cams, missing_params
-    
-    def split_json (self, data) :
-        """Splits the JSON data for distributed scraping across multiple Raspberry Pi"""
 
+    def split_json(self, data):
+        """Split the JSON data for distributed scraping across multiple Raspberry Pi."""
         splitted_json = []
 
         # Iterate over cameras and keep only those assigned to this Raspberry Pi
@@ -92,7 +92,7 @@ class AlertwestSpider(scrapy.Spider):
         print(f"Skipped {dot_cams} DOT cameras among {len(data_cams)} total cameras.")
         print(f"Miss a parameter in the json to construct URL for {missing_params} cameras among {len(data_cams)} total cameras.")
         print(f"Total relevant cameras after cleaning: {len(cleaned_data)}")
-    
+
         final_data = self.split_json(cleaned_data)
         print(f"Total relevant cameras for this Raspberry Pi (ID: {self.raspberry_id} / Total: {self.n_raspberry}): {len(final_data)}")
         self.total_relevant_cams = len(final_data)
