@@ -45,6 +45,17 @@ Notes
 scrapy crawl alertwest
 ```
 
+### Run with multiple raspberry pis
+
+Parameters :
+- `n_raspberry` : total number of raspberry pis
+- `raspberry_id` : the id of the raspberry running the code starting from 0, if there are 2 raspberries and this is the first one, the ID is 0.
+
+For example, with 2 raspberries and the first one is running :
+
+```bash
+scrapy crawl alertwest -a n_raspberry=2 -a raspberry_id=0
+```
 ### Run with custom parameters
 
 ```bash
