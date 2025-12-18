@@ -90,11 +90,15 @@ class AlertwestSpider(scrapy.Spider):
 
         print(f"Skipped {thermal_cams} thermal cameras among {len(data_cams)} total cameras.")
         print(f"Skipped {dot_cams} DOT cameras among {len(data_cams)} total cameras.")
-        print(f"Miss a parameter in the json to construct URL for {missing_params} cameras among {len(data_cams)} total cameras.")
+        print(
+            f"Miss a parameter in the json to construct URL for {missing_params} cameras among {len(data_cams)} total cameras."
+        )
         print(f"Total relevant cameras after cleaning: {len(cleaned_data)}")
 
         final_data = self.split_json(cleaned_data)
-        print(f"Total relevant cameras for this Raspberry Pi (ID: {self.raspberry_id} / Total: {self.n_raspberry}): {len(final_data)}")
+        print(
+            f"Total relevant cameras for this Raspberry Pi (ID: {self.raspberry_id} / Total: {self.n_raspberry}): {len(final_data)}"
+        )
         self.total_relevant_cams = len(final_data)
 
         # Iterate over cameras and yield items
@@ -109,6 +113,8 @@ class AlertwestSpider(scrapy.Spider):
             date_path = datetime.now().strftime("%Y/%m/%d")
             img_url = f"https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{date_path}/{img_name}"
 
-            item = PyronearItem(id=cam_id, name=cam_name, azimuth=azimuth, last_moved=timestamp, image_url=img_url, provider=provider)
+            item = PyronearItem(
+                id=cam_id, name=cam_name, azimuth=azimuth, last_moved=timestamp, image_url=img_url, provider=provider
+            )
 
             yield item
