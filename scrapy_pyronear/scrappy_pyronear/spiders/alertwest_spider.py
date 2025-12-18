@@ -11,7 +11,7 @@ from scrappy_pyronear.items import PyronearItem  # <<< import item propre
 # WITH DEBUG : scrapy crawl alertwest -s LOG_LEVEL=DEBUG
 
 # INDIVIDUAL PROPERTIES TO EXTRACT FROM THE API RESPONSE
-INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "camOffline", "camName"]
+INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "camOffline", "camName", "providerName"]
 API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
 
 
@@ -47,6 +47,7 @@ class AlertwestSpider(scrapy.Spider):
             img_name = cam.get(short_key["Screenshot"], None)
             azimuth = cam.get(short_key["Azimuth"], None)
             cam_name = cam.get(short_key["camName"], None)
+            provider = cam.get(short_key["providerName"], None)
 
             # Construct image URL
             if cam_id and img_name:
@@ -57,6 +58,6 @@ class AlertwestSpider(scrapy.Spider):
                 img_url = None
 
             # Create and yield the item
-            item = PyronearItem(id=cam_id, name=cam_name, azimuth=azimuth, last_moved=timestamp, image_url=img_url)
+            item = PyronearItem(id=cam_id, name=cam_name, azimuth=azimuth, last_moved=timestamp, image_url=img_url, provider=provider)
 
             yield item

@@ -17,3 +17,4 @@ class PyronearItem(scrapy.Item):
     last_moved = scrapy.Field()
     image_url = scrapy.Field()
     valid_url = scrapy.Field()
+    provider = scrapy.Field()
