@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 class ContinuousScraper:
     """Class for continuous scraping of AlertWest."""
 
-    def __init__(self, interval_seconds=30, n_raspberry=1, raspberry_id=0, cycle_refresh_json=1000, scrapy_settings=None):
+    def __init__(
+        self, interval_seconds=30, n_raspberry=1, raspberry_id=0, cycle_refresh_json=1000, scrapy_settings=None
+    ):
         """Initialize ContinuousScraper.
 
         Args:
