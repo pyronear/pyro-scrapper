@@ -32,16 +32,17 @@ logger = logging.getLogger(__name__)
 
 
 class ContinuousScraper:
-    """Gestionnaire de scraping continu."""
+    """Class for continuous scraping of AlertWest."""
 
     def __init__(self, interval_seconds=30, n_raspberry=1, raspberry_id=0, cycle_refresh_json=1000, scrapy_settings=None):
-        """Initialise le scraper continu.
+        """Initialize ContinuousScraper.
 
         Args:
-            interval_seconds (int): Interval en secondes entre chaque scraping
-            n_raspberry (int): Nombre total de Raspberry Pi
-            raspberry_id (int): ID de ce Raspberry Pi
-            scrapy_settings (dict): Settings Scrapy à surcharger
+            interval_seconds (int): Interval in seconds between each scraping
+            n_raspberry (int): Total number of Raspberry Pi devices
+            raspberry_id (int): ID of this Raspberry Pi
+            cycle_refresh_json (int): Cycle number after which the JSON is refreshed
+            scrapy_settings (dict): Scrapy settings to override
 
         """
         self.interval_seconds = interval_seconds
@@ -62,10 +63,10 @@ class ContinuousScraper:
         self.running = False
 
     def run_spider_once(self):
-        """Lance la spider une seule fois via subprocess.
+        """Launch the AlertWest spider once.
 
         Returns:
-            bool: True si le scraping s'est bien déroulé, False sinon
+            bool: True if the spider ran successfully, False otherwise.
 
         """
         try:
@@ -86,7 +87,7 @@ class ContinuousScraper:
             result = subprocess.run(
                 cmd,
                 cwd=Path(__file__).parent,
-                capture_output=False,  # Affiche la sortie en temps réel
+                capture_output=False,  # Display output in real-time
                 text=True,
             )
 
@@ -139,7 +140,7 @@ class ContinuousScraper:
 
 
 def main():
-    """Point d'entrée principal du script."""
+    """Parse command-line arguments and start continuous scraping."""
     parser = argparse.ArgumentParser(
         description="Continuous scraping script for AlertWest",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -170,7 +171,6 @@ Examples of usage:
         default=0,
         help="ID of this Raspberry Pi, starting from 0 (default: 0)",
     )
-
 
     parser.add_argument(
         "--cycle_refresh_json",
