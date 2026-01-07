@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class ContinuousScraper:
     """Gestionnaire de scraping continu."""
 
-    def __init__(self, interval_seconds=30, n_raspberry=1, raspberry_id=0, scrapy_settings=None):
+    def __init__(self, interval_seconds=30, n_raspberry=1, raspberry_id=0, cycle_refresh_json=1000, scrapy_settings=None):
         """Initialise le scraper continu.
 
         Args:
@@ -47,6 +47,7 @@ class ContinuousScraper:
         self.interval_seconds = interval_seconds
         self.n_raspberry = n_raspberry
         self.raspberry_id = raspberry_id
+        self.cycle_refresh_json = cycle_refresh_json
         self.scrapy_settings = scrapy_settings or {}
         self.running = True
         self.scrape_count = 0
@@ -76,6 +77,7 @@ class ContinuousScraper:
             cmd.extend(["-a", f"n_raspberry={self.n_raspberry}"])
             cmd.extend(["-a", f"raspberry_id={self.raspberry_id}"])
             cmd.extend(["-a", f"cycle_number={self.scrape_count}"])
+            cmd.extend(["-a", f"cycle_refresh_json={self.cycle_refresh_json}"])
 
             # Add Scrapy settings
             for setting, value in self.scrapy_settings.items():
@@ -167,6 +169,14 @@ Examples of usage:
         type=int,
         default=0,
         help="ID of this Raspberry Pi, starting from 0 (default: 0)",
+    )
+
+
+    parser.add_argument(
+        "--cycle_refresh_json",
+        type=int,
+        default=1000,
+        help="Cycle number after which the JSON is refreshed (default: 1000)",
     )
 
     parser.add_argument(
