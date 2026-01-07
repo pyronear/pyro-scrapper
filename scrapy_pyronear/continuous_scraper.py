@@ -50,7 +50,6 @@ class ContinuousScraper:
         self.scrapy_settings = scrapy_settings or {}
         self.running = True
         self.scrape_count = 0
-        
 
         # Gestion des signaux pour arrêt propre
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -76,11 +75,11 @@ class ContinuousScraper:
             cmd = ["scrapy", "crawl", "alertwest"]
             cmd.extend(["-a", f"n_raspberry={self.n_raspberry}"])
             cmd.extend(["-a", f"raspberry_id={self.raspberry_id}"])
-            
+
             # Add Scrapy settings
             for setting, value in self.scrapy_settings.items():
                 cmd.extend(["-s", f"{setting}={value}"])
-            
+
             result = subprocess.run(
                 cmd,
                 cwd=Path(__file__).parent,
@@ -154,21 +153,21 @@ Examples of usage:
     parser.add_argument(
         "--interval", type=int, default=60, help="Interval in seconds between each scraping (default: 60)"
     )
-    
+
     parser.add_argument(
         "--n_raspberry",
         type=int,
         default=1,
         help="Total number of Raspberry Pi devices (default: 1)",
     )
-    
+
     parser.add_argument(
         "--raspberry_id",
         type=int,
         default=0,
         help="ID of this Raspberry Pi, starting from 0 (default: 0)",
     )
-    
+
     parser.add_argument(
         "-s",
         action="append",
@@ -190,7 +189,7 @@ Examples of usage:
             f"must be less than n_raspberry ({args.n_raspberry})"
         )
         sys.exit(1)
-    
+
     # Parse Scrapy settings
     scrapy_settings = {}
     if args.scrapy_settings:
@@ -198,7 +197,6 @@ Examples of usage:
             if "=" in setting:
                 key, value = setting.split("=", 1)
                 scrapy_settings[key] = value
-
 
     # Lance le scraper continu
     scraper = ContinuousScraper(

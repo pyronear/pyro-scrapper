@@ -28,7 +28,7 @@ class AlertwestSpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
         self.n_raspberry = int(n_raspberry)
         self.raspberry_id = int(raspberry_id)
-        
+
         self.thermal_cams_ = 0
         self.dot_cams_ = 0
         self.missing_params_ = 0
