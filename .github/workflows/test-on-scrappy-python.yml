@@ -22,7 +22,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r ./scrapy_pyronear/requirements.txt
 
       - name: Run tests
-        run: pytest
+        run: pytest ./scrapy_pyronear/tests
