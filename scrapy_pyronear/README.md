@@ -32,6 +32,15 @@ python continuous_scraper.py
 
 # Custom interval (e.g., 90s)
 python continuous_scraper.py --interval 90
+
+# With Raspberry Pi distribution
+python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 0
+
+# With Scrapy settings override
+python continuous_scraper.py --interval 60 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
+
+# Combined: Raspberry Pi + Scrapy settings
+python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 1 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
 ```
 
 Notes

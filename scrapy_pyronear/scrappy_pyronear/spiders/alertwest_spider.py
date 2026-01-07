@@ -28,13 +28,14 @@ class AlertwestSpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
         self.n_raspberry = int(n_raspberry)
         self.raspberry_id = int(raspberry_id)
+        
+        self.thermal_cams_ = 0
+        self.dot_cams_ = 0
+        self.missing_params_ = 0
 
     def clean_cameras_data(self, short_key, data_cams):
         """Clean the JSON data by keeping only relevant items."""
         cleaned_json = []
-        thermal_cams = 0
-        dot_cams = 0
-        missing_params = 0
 
         # Iterate over cameras and filter out unwanted ones
         for cam in data_cams:
@@ -44,19 +45,19 @@ class AlertwestSpider(scrapy.Spider):
             provider = cam.get(short_key["providerName"], None)
 
             if "thermal" in cam_name.lower():
-                thermal_cams += 1
+                self.thermal_cams_ += 1
                 continue
             if "dot" in provider.lower():
-                dot_cams += 1
+                self.dot_cams_ += 1
                 continue
             if not cam_id or not img_name:
-                missing_params += 1
+                self.missing_params_ += 1
                 continue
 
             # Add item to cleaned json
             cleaned_json.append(cam)
 
-        return cleaned_json, thermal_cams, dot_cams, missing_params
+        return cleaned_json
 
     def split_json(self, data):
         """Split the JSON data for distributed scraping across multiple Raspberry Pi."""
@@ -86,12 +87,12 @@ class AlertwestSpider(scrapy.Spider):
                 if isinstance(longname, str) and prop_lower in longname.lower():
                     short_key[prop] = short
 
-        cleaned_data, thermal_cams, dot_cams, missing_params = self.clean_cameras_data(short_key, data_cams)
+        cleaned_data = self.clean_cameras_data(short_key, data_cams)
 
-        print(f"Skipped {thermal_cams} thermal cameras among {len(data_cams)} total cameras.")
-        print(f"Skipped {dot_cams} DOT cameras among {len(data_cams)} total cameras.")
+        print(f"Skipped {self.thermal_cams_} thermal cameras among {len(data_cams)} total cameras.")
+        print(f"Skipped {self.dot_cams_} DOT cameras among {len(data_cams)} total cameras.")
         print(
-            f"Miss a parameter in the json to construct URL for {missing_params} cameras among {len(data_cams)} total cameras."
+            f"Miss a parameter in the json to construct URL for {self.missing_params_} cameras among {len(data_cams)} total cameras."
         )
         print(f"Total relevant cameras after cleaning: {len(cleaned_data)}")
 
