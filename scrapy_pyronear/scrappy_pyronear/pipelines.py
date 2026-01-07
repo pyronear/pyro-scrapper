@@ -34,18 +34,14 @@ class AlertwestImagePipeline(ImagesPipeline):
         """Initialize pipeline when spider opens."""
         self.time = time.time()
         self.spiderinfo = self.SpiderInfo(spider)
-        self.total = getattr(spider, "total_cams", 0)
+        self.total = getattr(spider, "total_relevant_cams", 0)
         self.failed_cam = 0  # counter for failed downloads
-        self.no_url = 0  # counter for missing urls
         self.timeout_cam = 0  # compteur des timeouts
         self.progress_bar = None
 
     def close_spider(self, spider):
         """Print summary statistics when spider closes."""
         print(f"\nURL retrieved but camera is down for {self.failed_cam} cameras among {self.total} total cameras.")
-        print(
-            f"Miss a parameter in the json to construct URL for {self.no_url} cameras among {self.total} total cameras."
-        )
         print(f"Timed out for {self.timeout_cam} cameras among {self.total} total cameras.")
         print(f"Time taken: {(time.time() - self.time) / 60:.2f} minutes")
         if self.progress_bar:
@@ -73,7 +69,7 @@ class AlertwestImagePipeline(ImagesPipeline):
 
         """
         if self.progress_bar is None:
-            self.total = info.spider.total_cams
+            self.total = info.spider.total_relevant_cams
             self.progress_bar = tqdm(
                 total=self.total,
                 desc="Downloading images 🚀 ",
@@ -82,27 +78,17 @@ class AlertwestImagePipeline(ImagesPipeline):
             )
 
         url = item["image_url"]
-
-        # Skip thermal cameras
-        if "thermal" in item["name"].lower():
-            self.progress_bar.update(1)
-            return
-
-        if url:
-            self.progress_bar.update(1)
-            scraped_at = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            yield scrapy.Request(
-                url,
-                meta={
-                    "id": item["id"],
-                    "azimuth": item["azimuth"],
-                    "last_moved": item.get("last_moved"),
-                    "scraped_at": item.get("scraped_at", scraped_at),
-                },
-            )
-        else:
-            self.progress_bar.update(1)
-            self.no_url += 1
+        self.progress_bar.update(1)
+        scraped_at = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        yield scrapy.Request(
+            url,
+            meta={
+                "id": item["id"],
+                "azimuth": item["azimuth"],
+                "last_moved": item.get("last_moved"),
+                "scraped_at": item.get("scraped_at", scraped_at),
+            },
+        )
 
     def media_failed(self, failure, request, info):
         """Handle failed media downloads and count error types."""

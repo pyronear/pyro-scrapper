@@ -62,8 +62,11 @@ def test_alertwest_spider_parse():
                         "tr": "camTour"
                     }, 
                 "data": [
-                    {"p": 120, "lmt": "1600000", "id": "CAM001", "img": "image.jpg", "cn": "Camera 1"},
-                    {"p": 45, "lmt": "1700000", "id": "CAM002", "img": "photo.png", "cn": "Camera 2"},
+                    {"p": 120, "lmt": "1600000", "id": "CAM001", "img": "image.jpg", "cn": "Camera 1", "pn": "Provider A"},
+                    {"p": 45, "lmt": "1700000", "id": "CAM002", "img": "photo.png", "cn": "Camera 2", "pn": "Provider B"},
+                    {"p": 46, "lmt": "1700000", "id": "CAM002", "img": "photo.png", "cn": "Camera 3", "pn": "Provider B DOT"},
+                    {"p": 47, "lmt": "1700000", "id": "CAM002", "img": "photo.png", "cn": "Camera 4 Thermal", "pn": "Provider B"},
+                    {"p": 47, "lmt": "1700000", "id": "CAM002", "img": "", "cn": "Camera 4 Thermal", "pn": "Provider B"}
                 ]
             }
         }

@@ -32,6 +32,15 @@ python continuous_scraper.py
 
 # Custom interval (e.g., 90s)
 python continuous_scraper.py --interval 90
+
+# With Raspberry Pi distribution
+python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 0
+
+# With Scrapy settings override
+python continuous_scraper.py --interval 60 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
+
+# Combined: Raspberry Pi + Scrapy settings
+python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 1 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
 ```
 
 Notes
@@ -45,6 +54,17 @@ Notes
 scrapy crawl alertwest
 ```
 
+### Run with multiple raspberry pis
+
+Parameters :
+- `n_raspberry` : total number of raspberry pis
+- `raspberry_id` : the id of the raspberry running the code starting from 0, if there are 2 raspberries and this is the first one, the ID is 0.
+
+For example, with 2 raspberries and the first one is running :
+
+```bash
+scrapy crawl alertwest -a n_raspberry=2 -a raspberry_id=0
+```
 ### Run with custom parameters
 
 ```bash

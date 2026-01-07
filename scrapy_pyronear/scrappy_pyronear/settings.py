@@ -15,13 +15,13 @@ SPIDER_MODULES = ["scrappy_pyronear.spiders"]
 NEWSPIDER_MODULE = "scrappy_pyronear.spiders"
 
 # Définir les exports de données
-FEEDS = {"alertwest.json": {"format": "json", "encoding": "utf8", "store_empty": False, "indent": 2, "overwrite": True}}
+FEEDS = {}
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = "pyronear (+http://www.yourdomain.com)"
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # Increase these values to parallelize downloads. Tune according to your
