@@ -203,7 +203,7 @@ Examples of usage:
         interval_seconds=args.interval,
         n_raspberry=args.n_raspberry,
         raspberry_id=args.raspberry_id,
-        scrapy_settings=scrapy_settings
+        scrapy_settings=scrapy_settings,
     )
     scraper.run()
 
