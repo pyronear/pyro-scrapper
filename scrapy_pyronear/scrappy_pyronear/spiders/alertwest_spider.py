@@ -2,12 +2,10 @@
 
 import json
 from datetime import datetime
+from pathlib import Path
 
 import scrapy
 from scrappy_pyronear.items import PyronearItem
-
-from pathlib import Path
-from scrapy.http import HtmlResponse
 
 # Execute the code
 # NORMAL : scrapy crawl alertwest
@@ -20,6 +18,7 @@ INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "cam
 API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
 CACHE_DIR = Path("data/alertwest_cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 
 class AlertwestSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
@@ -40,7 +39,7 @@ class AlertwestSpider(scrapy.Spider):
 
     def clean_cameras_data(self, short_key, data_cams):
         """Clean the JSON data by keeping only relevant items."""
-        cleaned_file_json = CACHE_DIR / f"alertwest_cleaned_json.json"
+        cleaned_file_json = CACHE_DIR / "alertwest_cleaned_json.json"
         cleaned_json = []
 
         for cam in data_cams:
@@ -76,9 +75,7 @@ class AlertwestSpider(scrapy.Spider):
 
     def split_json(self, data):
         """Split the JSON data for distributed scraping across multiple Raspberry Pi."""
-
         splitted_for_me = []
-
         for rid in range(self.n_raspberry):
             subset = [cam for idx, cam in enumerate(data) if idx % self.n_raspberry == rid]
             file_splitted_json = CACHE_DIR / f"alertwest_split_raspberry_{rid}.json"
@@ -104,7 +101,6 @@ class AlertwestSpider(scrapy.Spider):
                 provider=cam.get(short_key["providerName"]),
             )
 
-
     def start_requests(self):
         """Decide whether to fetch API or use cached JSON."""
         cache_file = CACHE_DIR / f"alertwest_cache_raspberry_{self.raspberry_id}.json"
@@ -121,7 +117,6 @@ class AlertwestSpider(scrapy.Spider):
             final_data = payload["cams"]
             short_key = payload["short_key"]
             yield from self.items_from_data(final_data, short_key)
-
 
     def parse(self, response):
         """Parse the API response, clean & split data, cache it, and yield items."""
