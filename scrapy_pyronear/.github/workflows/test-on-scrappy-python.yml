@@ -3,7 +3,7 @@ name: Tests on scrappy_python
 on:
   pull_request:
     branches:
-      - scrappy_python
+      - develop
 
 jobs:
   test:
