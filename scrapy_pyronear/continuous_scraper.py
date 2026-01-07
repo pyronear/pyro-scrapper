@@ -75,6 +75,7 @@ class ContinuousScraper:
             cmd = ["scrapy", "crawl", "alertwest"]
             cmd.extend(["-a", f"n_raspberry={self.n_raspberry}"])
             cmd.extend(["-a", f"raspberry_id={self.raspberry_id}"])
+            cmd.extend(["-a", f"cycle_number={self.scrape_count}"])
 
             # Add Scrapy settings
             for setting, value in self.scrapy_settings.items():

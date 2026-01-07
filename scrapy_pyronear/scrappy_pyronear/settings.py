@@ -21,7 +21,7 @@ FEEDS = {"alertwest.json": {"format": "json", "encoding": "utf8", "store_empty":
 # USER_AGENT = "pyronear (+http://www.yourdomain.com)"
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # Increase these values to parallelize downloads. Tune according to your
