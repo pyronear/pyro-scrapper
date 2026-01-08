@@ -2,7 +2,6 @@
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import scrapy
 from scrappy_pyronear.items import PyronearItem
@@ -15,29 +14,15 @@ from .alertwest_utils import (
     save_cache,
 )
 
+from .config import (
+    API_URL,
+    CACHE_DIR
+)
+
 # Execute the code
 # NORMAL : scrapy crawl alertwest
 # WITH DEBUG : scrapy crawl alertwest -s LOG_LEVEL=DEBUG
 # WITH RASPBERRY PARAMETERS : scrapy crawl alertwest -a n_raspberry=2 -a raspberry_id=0
-
-
-# INDIVIDUAL PROPERTIES TO EXTRACT FROM THE API RESPONSE
-INTERESTING_PROPERTIES = [
-    "Azimuth",
-    "camLastMoved",
-    "camId",
-    "Screenshot",
-    "camOffline",
-    "camName",
-    "providerName",
-    "locLat",
-    "locLon",
-    "camLocation",
-]
-API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
-CACHE_DIR = Path("data/alertwest_cache")
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
 
 class AlertwestSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
@@ -73,7 +58,7 @@ class AlertwestSpider(scrapy.Spider):
             )
 
     def process_from_api(self, data):
-        short_key_cams, short_key_locs = extract_keys(data, INTERESTING_PROPERTIES)
+        short_key_cams, short_key_locs = extract_keys(data)
 
         data_cams = data["data"]["cams"]["data"]
         data_locs = data["data"]["locs"]["data"]
@@ -119,7 +104,7 @@ class AlertwestSpider(scrapy.Spider):
             final_data, short_key_cams = self.process_from_api(data)
             self.total_relevant_cams = len(final_data)
 
-        elif self.cycle_number % self.cycle_refresh_json == 0:
+        elif self.cycle_number % self.cycle_refresh_json == 1:
             self.logger.info("🔄 Refresh from cleaned cache")
             final_data, short_key_cams = self.process_from_clean_cache()
             self.total_relevant_cams = len(final_data)

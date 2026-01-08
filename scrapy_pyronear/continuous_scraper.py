@@ -4,19 +4,9 @@ This script launches the alertwest spider continuously with a configurable
 interval between each execution.
 
 Usage:
-    python continuous_scraper.py [--interval SECONDS] [--n_raspberry N] [--raspberry_id ID] [-s SETTING=VALUE]
+    python -m scrapy_pyronear.continuous_scraper [-s SETTING=VALUE]
 
-Options:
-    --interval SECONDS      Interval in seconds between each scraping (default: 60)
-    --n_raspberry N         Total number of Raspberry Pi devices (default: 1)
-    --raspberry_id ID       ID of this Raspberry Pi (default: 0)
-    -s SETTING=VALUE        Scrapy settings to override (ex: DOWNLOAD_TIMEOUT=3, CONCURRENT_ITEMS=100)
-
-Examples:
-    python continuous_scraper.py --interval 60
-    python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 0
-    python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 1 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
-
+To customize the interval and Raspberry Pi parameters, modify the values in config.py
 """
 
 import argparse
@@ -26,6 +16,13 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from .config import (
+    INTERVAL,
+    N_RASPBERRY,
+    RASPBERRY_ID,
+    CYCLE_REFRESH_JSON,
+    LAUNCH_WITH_CLEANING
+)
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
@@ -48,10 +45,10 @@ class ContinuousScraper:
             scrapy_settings (dict): Scrapy settings to override
 
         """
-        self.interval_seconds = interval_seconds
-        self.n_raspberry = n_raspberry
-        self.raspberry_id = raspberry_id
-        self.cycle_refresh_json = cycle_refresh_json
+        self.interval_seconds = INTERVAL
+        self.n_raspberry = N_RASPBERRY
+        self.raspberry_id = RASPBERRY_ID
+        self.cycle_refresh_json = CYCLE_REFRESH_JSON
         self.scrapy_settings = scrapy_settings or {}
         self.running = True
         self.scrape_count = 0
@@ -73,7 +70,14 @@ class ContinuousScraper:
 
         """
         try:
-            logger.info(f"🚀 Start of scraping cycle #{self.scrape_count + 1}")
+            if LAUNCH_WITH_CLEANING :
+                logger.info(f"🚀 Start of cleaning JSON and scraping cycle #{self.scrape_count}")
+
+            else :
+                self.scrape_count += 1
+                logger.info(f"🚀 Start of scraping cycle #{self.scrape_count}")
+
+            
             start_time = time.time()
 
             # Launch scrapy crawl in subprocess
@@ -149,37 +153,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples of usage:
-  python continuous_scraper.py                                        # Default interval (60s)
-  python continuous_scraper.py --interval 90                          # Every 90 seconds
-  python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 0
-  python continuous_scraper.py --interval 60 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
-  python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 1 -s DOWNLOAD_TIMEOUT=3
+  python continuous_scraper.py -s DOWNLOAD_TIMEOUT=3
         """,
-    )
-
-    parser.add_argument(
-        "--interval", type=int, default=60, help="Interval in seconds between each scraping (default: 60)"
-    )
-
-    parser.add_argument(
-        "--n_raspberry",
-        type=int,
-        default=1,
-        help="Total number of Raspberry Pi devices (default: 1)",
-    )
-
-    parser.add_argument(
-        "--raspberry_id",
-        type=int,
-        default=0,
-        help="ID of this Raspberry Pi, starting from 0 (default: 0)",
-    )
-
-    parser.add_argument(
-        "--cycle_refresh_json",
-        type=int,
-        default=1000,
-        help="Cycle number after which the JSON is refreshed (default: 1000)",
     )
 
     parser.add_argument(
@@ -192,15 +167,15 @@ Examples of usage:
     args = parser.parse_args()
 
     # Validation
-    if args.interval < 15:
+    if INTERVAL < 15:
         logger.error("Interval must be at least 15 seconds")
         sys.exit(1)
 
     # Validate Raspberry Pi parameters
-    if args.raspberry_id >= args.n_raspberry:
+    if RASPBERRY_ID >= N_RASPBERRY:
         logger.error(
-            f"Invalid Raspberry Pi configuration: raspberry_id ({args.raspberry_id}) "
-            f"must be less than n_raspberry ({args.n_raspberry})"
+            f"Invalid Raspberry Pi configuration: raspberry_id ({RASPBERRY_ID}) "
+            f"must be less than n_raspberry ({N_RASPBERRY})"
         )
         sys.exit(1)
 
@@ -214,13 +189,12 @@ Examples of usage:
 
     # Launch continuous scraper
     scraper = ContinuousScraper(
-        interval_seconds=args.interval,
-        n_raspberry=args.n_raspberry,
-        raspberry_id=args.raspberry_id,
+        interval_seconds=INTERVAL,
+        n_raspberry=N_RASPBERRY,
+        raspberry_id=RASPBERRY_ID,
         scrapy_settings=scrapy_settings,
     )
     scraper.run()
-
 
 if __name__ == "__main__":
     main()

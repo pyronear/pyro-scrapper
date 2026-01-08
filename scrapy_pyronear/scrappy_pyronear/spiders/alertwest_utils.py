@@ -13,12 +13,15 @@ from datetime import datetime
 
 from tqdm import tqdm
 
-CACHE_DIR = Path("data/alertwest_cache")
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+from .config import (
+    INTERESTING_PROPERTIES,
+    CACHE_DIR
+
+)
 
 _tz_finder = TimezoneFinder()
 
-def extract_keys(data, INTERESTING_PROPERTIES):
+def extract_keys(data):
     """Extract short keys for cameras and locations from the API response."""
     cams_keys = data.get("data", {}).get("cams", {}).get("key", {})
     locs_keys = data.get("data", {}).get("locs", {}).get("key", {})
