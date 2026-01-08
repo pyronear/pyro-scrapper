@@ -23,6 +23,7 @@ The continuous runner is the easiest way to keep images up‑to‑date.
 
 - What it does: repeatedly launches the Scrapy spider at a fixed interval (no overlap). It logs each cycle, handles Ctrl+C gracefully, and reuses your Scrapy project settings, spider, and pipelines.
 - How it works with Scrapy: it shells out `scrapy crawl alertwest` inside this project, so the spider, pipelines, and `settings.py` remain the single source of truth. The runner only schedules runs; it doesn’t change scraping logic.
+- The API call to fetch the JSON containing all the cameras metadata is only called every few cycles. The number of cycles without fetching the JSON is customizable.
 
 ### Quick start
 
