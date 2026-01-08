@@ -6,6 +6,13 @@ from astral import LocationInfo
 from astral.sun import sun
 from timezonefinder import TimezoneFinder
 
+import requests
+from PIL import Image
+from io import BytesIO
+from datetime import datetime
+
+from tqdm import tqdm
+
 CACHE_DIR = Path("data/alertwest_cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -52,9 +59,11 @@ def clean_cameras_data(short_key_cams, data_cams):
     """Clean the JSON data by keeping only relevant items."""
     cleaned_file_json = CACHE_DIR / "alertwest_cleaned_json.json"
     cleaned_json = []
-    stats = {"thermal":0, "dot":0, "offline":0, "missing":0}
+    stats = {"thermal":0, "dot":0, "offline":0, "missing":0, "low_res":0}
 
-    for cam in data_cams:
+    date_path = datetime.now().strftime("%Y/%m/%d")
+
+    for cam in tqdm(data_cams, desc="Cleaning cameras", unit="cam"):
         cam_id_cams = cam.get(short_key_cams.get("camId"))
         img_name = cam.get(short_key_cams.get("Screenshot"))
         cam_name = (cam.get(short_key_cams.get("camName")) or "").lower()
@@ -75,10 +84,33 @@ def clean_cameras_data(short_key_cams, data_cams):
             stats["missing"] += 1
             continue
 
+        img_url = (
+            f"https://img.cdn.prod.alertwest.com/data/img/"
+            f"{cam.get(short_key_cams['camId'])}/{date_path}/"
+            f"{cam.get(short_key_cams['Screenshot'])}"
+        )
+
+        try:
+            resp = requests.get(img_url, timeout=5)
+            img = Image.open(BytesIO(resp.content))
+            width, _ = img.size
+
+            # Skip low-resolution images
+            if width < 640:
+                stats["low_res"] += 1
+                continue
+
+        except Exception:
+            stats["missing"] += 1
+            continue
+
         cleaned_json.append(cam)
 
     print(
         f"\nSkipped {stats['thermal']} thermal cameras, {stats['dot']} DOT cameras, {stats['offline']} offline cameras among {len(data_cams)} total cameras."
+    )
+    print(
+        f"Skipped {stats['low_res']} low-resolution cameras (<640px width) among {len(data_cams)} total cameras."
     )
     print(
         f"Miss a parameter in the json to construct URL for {stats['missing']} cameras among {len(data_cams)} total cameras."
