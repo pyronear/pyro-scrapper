@@ -3,9 +3,13 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import scrapy
+from astral import LocationInfo
+from astral.sun import sun
 from scrappy_pyronear.items import PyronearItem
+from timezonefinder import TimezoneFinder
 
 # Execute the code
 # NORMAL : scrapy crawl alertwest
@@ -14,7 +18,18 @@ from scrappy_pyronear.items import PyronearItem
 
 
 # INDIVIDUAL PROPERTIES TO EXTRACT FROM THE API RESPONSE
-INTERESTING_PROPERTIES = ["Azimuth", "camLastMoved", "camId", "Screenshot", "camOffline", "camName", "providerName"]
+INTERESTING_PROPERTIES = [
+    "Azimuth",
+    "camLastMoved",
+    "camId",
+    "Screenshot",
+    "camOffline",
+    "camName",
+    "providerName",
+    "locLat",
+    "locLon",
+    "camLocation",
+]
 API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"
 CACHE_DIR = Path("data/alertwest_cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -26,27 +41,87 @@ class AlertwestSpider(scrapy.Spider):
     name = "alertwest"
     start_urls = [API_URL]
 
-    def __init__(self, n_raspberry=1, raspberry_id=0, cycle_number=0, *args, **kwargs):
+    def __init__(self, n_raspberry=1, raspberry_id=0, cycle_number=0, cycle_refresh_json=50, *args, **kwargs):
         """Initialize the spider with Raspberry Pi distribution parameters."""
         super().__init__(*args, **kwargs)
         self.n_raspberry = int(n_raspberry)
         self.raspberry_id = int(raspberry_id)
         self.cycle_number = int(cycle_number)
+        self.cycle_refresh_json = int(cycle_refresh_json)
 
         self.thermal_cams_ = 0
         self.dot_cams_ = 0
         self.missing_params_ = 0
+        self.offline_cams_ = 0
+        self.night_cams_ = 0
 
-    def clean_cameras_data(self, short_key, data_cams):
+    def is_daytime_by_coords(self, latitude, longitude):
+        """Check if it's currently daytime at given coordinates.
+
+        Args:
+            latitude: Latitude coordinate
+            longitude: Longitude coordinate
+
+        Returns:
+            bool: True if daytime, False if nighttime
+                  Returns False if unable to calculate (edge cases, polar regions, etc.)
+
+        """
+        try:
+            # Get or initialize timezone resolver
+            if not hasattr(self, "_tz_finder"):
+                self._tz_finder = TimezoneFinder()
+
+            lat = float(latitude)
+            lon = float(longitude)
+
+            # Find local timezone from position
+            tz_name = self._tz_finder.timezone_at(lat=lat, lng=lon)
+            local_tz = ZoneInfo(tz_name)
+
+            location = LocationInfo(
+                latitude=lat,
+                longitude=lon,
+                timezone=tz_name,
+            )
+
+            now_local = datetime.now(local_tz)
+
+            s = sun(location.observer, date=now_local.date(), tzinfo=local_tz)
+            sunrise = s["sunrise"]
+            sunset = s["sunset"]
+
+            return sunrise <= now_local <= sunset  # Consider tightening window to avoid any night images
+
+        except Exception:
+            # If calculation impossible (extreme coords, missing tz), consider it night
+            return False
+
+    def clean_cameras_data(self, short_key_cams, short_key_locs, data_cams, data_locs):
         """Clean the JSON data by keeping only relevant items."""
         cleaned_file_json = CACHE_DIR / "alertwest_cleaned_json.json"
         cleaned_json = []
 
+        # Create location mapping by ID for fast access
+        locs_by_id = {}
+        for loc in data_locs:
+            loc_id = loc.get("id")
+            if loc_id:
+                locs_by_id[loc_id] = loc
+
         for cam in data_cams:
-            cam_id = cam.get(short_key["camId"])
-            img_name = cam.get(short_key["Screenshot"])
-            cam_name = (cam.get(short_key["camName"]) or "").lower()
-            provider = (cam.get(short_key["providerName"]) or "").lower()
+            cam_id_cams = cam.get(short_key_cams.get("camId"))
+            img_name = cam.get(short_key_cams.get("Screenshot"))
+            cam_name = (cam.get(short_key_cams.get("camName")) or "").lower()
+            provider = (cam.get(short_key_cams.get("providerName")) or "").lower()
+            cam_offline = cam.get(short_key_cams.get("camOffline"))
+
+            # Find corresponding location via 'lid' (location ID)
+            cam_loc = None
+            cam_location_id = cam.get("lid")  # This is the key to find the location
+            if cam_location_id and cam_location_id in locs_by_id:
+                loc = locs_by_id[cam_location_id]
+                cam_loc = [loc.get(short_key_locs.get("locLat")), loc.get(short_key_locs.get("locLon"))]
 
             if "thermal" in cam_name:
                 self.thermal_cams_ += 1
@@ -54,20 +129,31 @@ class AlertwestSpider(scrapy.Spider):
             if "dot" in provider:
                 self.dot_cams_ += 1
                 continue
-            if not cam_id or not img_name:
+            if cam_offline == 1:
+                self.offline_cams_ += 1
+                continue
+            if not cam_id_cams or not img_name:
                 self.missing_params_ += 1
+                continue
+            if not cam_loc or cam_loc == [None, None]:
+                continue
+            if not self.is_daytime_by_coords(cam_loc[0], cam_loc[1]):
+                self.night_cams_ += 1
                 continue
 
             cleaned_json.append(cam)
 
-        print(f"Skipped {self.thermal_cams_} thermal cameras among {len(data_cams)} total cameras.")
-        print(f"Skipped {self.dot_cams_} DOT cameras among {len(data_cams)} total cameras.")
+        print(
+            f"\nSkipped {self.thermal_cams_} thermal cameras, {self.dot_cams_} DOT cameras, {self.offline_cams_} offline cameras among {len(data_cams)} total cameras."
+        )
         print(
             f"Miss a parameter in the json to construct URL for {self.missing_params_} cameras among {len(data_cams)} total cameras."
         )
+        print(f"Skipped {self.night_cams_} nighttime cameras among {len(data_cams)} total cameras.")
+
         print(f"Total relevant cameras after cleaning: {len(cleaned_json)}")
 
-        # Stocker le JSON nettoyé
+        # Store cleaned JSON
         with open(cleaned_file_json, "w") as f:
             json.dump(cleaned_json, f)
 
@@ -99,6 +185,9 @@ class AlertwestSpider(scrapy.Spider):
                 last_moved=int(cam.get(short_key["camLastMoved"], "0")),
                 image_url=f"https://img.cdn.prod.alertwest.com/data/img/{cam.get(short_key['camId'])}/{date_path}/{cam.get(short_key['Screenshot'])}",
                 provider=cam.get(short_key["providerName"]),
+                # location_id =cam.get("lid"),
+                # latitude=cam.get(short_key["locLat"]),
+                # longitude=cam.get(short_key["locLon"]),
             )
 
     def start_requests(self):
@@ -111,34 +200,46 @@ class AlertwestSpider(scrapy.Spider):
             yield scrapy.Request(API_URL, callback=self.parse)
         else:
             self.logger.info("📦 Using cached AlertWest JSON")
-            # Charger le cache directement sans écraser
+            # Load cache directly without overwriting
             with open(cache_file, "r") as f:
                 payload = json.load(f)
             final_data = payload["cams"]
-            short_key = payload["short_key"]
-            yield from self.items_from_data(final_data, short_key)
+            short_key_cams = payload.get("short_key_cams", payload.get("short_key"))  # Backward compatibility
+            yield from self.items_from_data(final_data, short_key_cams)
 
     def parse(self, response):
         """Parse the API response, clean & split data, cache it, and yield items."""
         data = json.loads(response.text)
-        key_list = data.get("data", {}).get("cams", {}).get("key", {})
-        data_cams = data.get("data", {}).get("cams", {}).get("data", [])
 
-        # Map properties to short keys
-        short_key = {
+        cams_keys = data.get("data", {}).get("cams", {}).get("key", {})
+        locs_keys = data.get("data", {}).get("locs", {}).get("key", {})
+
+        data_cams = data.get("data", {}).get("cams", {}).get("data", [])
+        data_locs = data.get("data", {}).get("locs", {}).get("data", [])
+
+        # Map properties to short keys for cams ONLY
+        short_key_cams = {
             prop: short
             for prop in INTERESTING_PROPERTIES
-            for short, longname in key_list.items()
+            for short, longname in cams_keys.items()
+            if isinstance(longname, str) and prop.lower() in longname.lower()
+        }
+
+        # Map properties to short keys for locs ONLY
+        short_key_locs = {
+            prop: short
+            for prop in INTERESTING_PROPERTIES
+            for short, longname in locs_keys.items()
             if isinstance(longname, str) and prop.lower() in longname.lower()
         }
 
         # Clean and split data
-        cleaned_data = self.clean_cameras_data(short_key, data_cams)
+        cleaned_data = self.clean_cameras_data(short_key_cams, short_key_locs, data_cams, data_locs)
         final_data = self.split_json(cleaned_data)
 
         # Cache for this raspberry
         cache_file = CACHE_DIR / f"alertwest_cache_raspberry_{self.raspberry_id}.json"
         with open(cache_file, "w") as f:
-            json.dump({"short_key": short_key, "cams": final_data}, f)
+            json.dump({"short_key_cams": short_key_cams, "short_key_locs": short_key_locs, "cams": final_data}, f)
 
-        yield from self.items_from_data(final_data, short_key)
+        yield from self.items_from_data(final_data, short_key_cams)

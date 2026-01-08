@@ -3,3 +3,5 @@ pytest
 pillow
 tqdm
 ruff
+astral==3.2
+timezonefinder==8.2.0

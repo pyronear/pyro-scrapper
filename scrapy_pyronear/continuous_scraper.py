@@ -1,21 +1,22 @@
-"""Script de scraping continu pour AlertWest.
+"""Continuous scraping script for AlertWest.
 
-Ce script lance la spider alertwest de manière continue avec un intervalle
-configurable entre chaque exécution.
+This script launches the alertwest spider continuously with a configurable
+interval between each execution.
 
 Usage:
     python continuous_scraper.py [--interval SECONDS] [--n_raspberry N] [--raspberry_id ID] [-s SETTING=VALUE]
 
 Options:
-    --interval SECONDS      Intervalle en secondes entre chaque scraping (défaut: 60)
-    --n_raspberry N         Nombre total de Raspberry Pi (défaut: 1)
-    --raspberry_id ID       ID de ce Raspberry Pi (défaut: 0)
-    -s SETTING=VALUE        Settings Scrapy à surcharger (ex: DOWNLOAD_TIMEOUT=3, CONCURRENT_ITEMS=100)
+    --interval SECONDS      Interval in seconds between each scraping (default: 60)
+    --n_raspberry N         Total number of Raspberry Pi devices (default: 1)
+    --raspberry_id ID       ID of this Raspberry Pi (default: 0)
+    -s SETTING=VALUE        Scrapy settings to override (ex: DOWNLOAD_TIMEOUT=3, CONCURRENT_ITEMS=100)
 
-Exemples:
+Examples:
     python continuous_scraper.py --interval 60
     python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 0
     python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 1 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
+
 """
 
 import argparse
@@ -26,7 +27,7 @@ import sys
 import time
 from pathlib import Path
 
-# Configuration du logging
+# Logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class ContinuousScraper:
         self.running = True
         self.scrape_count = 0
 
-        # Gestion des signaux pour arrêt propre
+        # Handle signals for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
@@ -75,7 +76,7 @@ class ContinuousScraper:
             logger.info(f"🚀 Start of scraping cycle #{self.scrape_count + 1}")
             start_time = time.time()
 
-            # Lance scrapy crawl en subprocess
+            # Launch scrapy crawl in subprocess
             cmd = ["scrapy", "crawl", "alertwest"]
             cmd.extend(["-a", f"n_raspberry={self.n_raspberry}"])
             cmd.extend(["-a", f"raspberry_id={self.raspberry_id}"])
@@ -110,7 +111,7 @@ class ContinuousScraper:
     def run(self):
         """Run continuous scraping with the specified interval."""
         logger.info(f"🔄 Starting continuous scraping (interval: {self.interval_seconds}s)")
-        logger.info(f"📡 Raspberry Pi configuration: ID {self.raspberry_id}/{self.n_raspberry}")
+        logger.info(f"📡 Raspberry Pi configuration: ID {self.raspberry_id}/{self.n_raspberry - 1}")
         if self.scrapy_settings:
             settings_str = ", ".join([f"{k}={v}" for k, v in self.scrapy_settings.items()])
             logger.info(f"⚙️  Scrapy settings: {settings_str}")
@@ -119,17 +120,17 @@ class ContinuousScraper:
         while self.running:
             cycle_start = time.time()
 
-            # Lance un cycle de scraping
+            # Launch a scraping cycle
             self.run_spider_once()
 
-            # Calcule le temps d'attente avant le prochain cycle
+            # Calculate wait time before next cycle
             elapsed = time.time() - cycle_start
             wait_time = max(0, self.interval_seconds - elapsed)
 
             if wait_time > 0:
                 logger.info(f"⏳ Waiting {wait_time:.2f}s before the next cycle...")
 
-                # Temps d'attente avec possibilité d'arrêt
+                # Wait time with ability to stop
                 sleep_start = time.time()
                 while (time.time() - sleep_start) < wait_time and self.running:
                     time.sleep(min(1, wait_time - (time.time() - sleep_start)))
@@ -211,7 +212,7 @@ Examples of usage:
                 key, value = setting.split("=", 1)
                 scrapy_settings[key] = value
 
-    # Lance le scraper continu
+    # Launch continuous scraper
     scraper = ContinuousScraper(
         interval_seconds=args.interval,
         n_raspberry=args.n_raspberry,
