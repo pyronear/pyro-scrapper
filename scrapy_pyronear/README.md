@@ -221,6 +221,57 @@ Increase the timeout:
 scrapy crawl alertwest -s DOWNLOAD_TIMEOUT=10
 ```
 
+---
+
+# Wildfire Detection with pyro-engine
+
+The `plug_to_pyroengine.py` script enables automated wildfire detection on scraped camera images using temporal analysis.
+
+## How it works
+
+1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images (default: 6) where timestamps are separated by at most a specified gap (default: 60 seconds).
+
+2. **Detection**: Each valid sequence is processed folder-by-folder through pyroengine's wildfire detection model.
+
+3. **Output**: Folders containing sequences with detected wildfires are copied to an `annotations/` directory for further review.
+
+## Usage
+
+First, ensure you're in the `pyronear` conda environment with pyroengine installed:
+
+```bash
+conda activate pyronear
+python plug_to_pyroengine.py --n 6 --max-gap 60 --conf-thresh 0.15
+```
+
+## Options
+
+- `--images-dir`: Root images directory (defaults to `images/` next to the script)
+- `--n`: Required number of consecutive images in a sequence (default: 6)
+- `--max-gap`: Maximum allowed gap in seconds between consecutive images (default: 60)
+- `--conf-thresh`: Confidence threshold for wildfire detection (default: 0.15)
+- `--output-dir`: Output directory for detected sequences (default: `annotations/` next to images)
+
+## Example
+
+```bash
+# Analyze sequences of 8 images with 30-second max gap and 0.20 confidence threshold
+python plug_to_pyroengine.py --n 8 --max-gap 30 --conf-thresh 0.20 --output-dir ./detections
+```
+
+## Prerequisites for Detection
+
+Before running wildfire detection, install pyroengine and its dependencies:
+
+```bash
+conda activate pyronear
+cd ../../pyro-engine
+pip install -r requirements.txt
+pip install -e .
+```
+
+---
+
 
 ## Mécanisme de scraping (détail technique)
 
