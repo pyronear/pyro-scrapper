@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from .config import (
+from scrapy_pyronear.config import (
     INTERVAL,
     N_RASPBERRY,
     RASPBERRY_ID,

@@ -92,6 +92,9 @@ scrapy crawl alertwest -s LOG_LEVEL=DEBUG
 ## Tests
 
 ```bash
+# At the root of the project
+pip install -e .
+
 # Bash / Linux / macOS
 pytest -v tests/
 
