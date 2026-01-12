@@ -74,9 +74,7 @@ def parse_timestamp_from_filename(name: str) -> Optional[datetime]:
         return None
 
 
-def find_sequences(
-    sorted_entries: List[ImageEntry], n: int, max_gap_seconds: int
-) -> List[List[ImageEntry]]:
+def find_sequences(sorted_entries: List[ImageEntry], n: int, max_gap_seconds: int) -> List[List[ImageEntry]]:
     """Find sequences of length `n` where every consecutive gap ≤ `max_gap_seconds`.
 
     Args:
@@ -110,9 +108,7 @@ def find_sequences(
     return res
 
 
-def scan_folder_for_sequences(
-    folder: Path, n: int, max_gap_seconds: int
-) -> List[List[ImageEntry]]:
+def scan_folder_for_sequences(folder: Path, n: int, max_gap_seconds: int) -> List[List[ImageEntry]]:
     """Scan one folder and return sequences of images meeting the criteria."""
     entries: List[ImageEntry] = []
     for p in sorted(folder.glob("*.jpg")):
@@ -170,9 +166,7 @@ def run_inference_on_sequence(
     return max_conf >= conf_thresh, max_conf
 
 
-def handle_detection(
-    folder: Path, sequence: List[ImageEntry], output_dir: Path
-) -> None:
+def handle_detection(folder: Path, sequence: List[ImageEntry], output_dir: Path) -> None:
     """Copy or move the folder containing detected sequence to output directory.
 
     Args:
@@ -259,9 +253,7 @@ def main(
                 end=" ",
             )
 
-            has_detection, max_conf = run_inference_on_sequence(
-                engine, seq, conf_thresh
-            )
+            has_detection, max_conf = run_inference_on_sequence(engine, seq, conf_thresh)
             print(f"| Max confidence: {max_conf:.4f}", end="")
 
             if has_detection:
@@ -285,18 +277,14 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Find consecutive image sequences and run pyroengine detection."
-    )
+    parser = argparse.ArgumentParser(description="Find consecutive image sequences and run pyroengine detection.")
     parser.add_argument(
         "--images-dir",
         type=str,
         default=None,
         help="Root images directory (defaults to images/ next to this file)",
     )
-    parser.add_argument(
-        "--n", type=int, default=6, help="Required number of consecutive images"
-    )
+    parser.add_argument("--n", type=int, default=6, help="Required number of consecutive images")
     parser.add_argument(
         "--max-gap",
         type=int,
@@ -317,6 +305,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    raise SystemExit(
-        main(args.images_dir, args.n, args.max_gap, args.conf_thresh, args.output_dir)
-    )
+    raise SystemExit(main(args.images_dir, args.n, args.max_gap, args.conf_thresh, args.output_dir))
