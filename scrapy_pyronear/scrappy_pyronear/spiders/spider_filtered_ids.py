@@ -1,4 +1,4 @@
-"""AlertWest spider for scraping camera images."""
+"""Spider to fetch all the camera and their infromations available on alertwest.com."""
 
 import json
 from datetime import datetime
@@ -6,7 +6,7 @@ from datetime import datetime
 import scrapy
 from scrappy_pyronear.items import PyronearItem
 
-from .alertwest_utils import (
+from .spider_utils import (
     extract_keys
 )
 
@@ -22,13 +22,18 @@ from .config import (
 class FilteredIdsSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
 
-    name = "alertwest_filtered_ids"
+    name = "spider_filtered_ids"
     custom_settings = {
         'ITEM_PIPELINES': {
-            'app.FilteredIdsPipeline': 400
+            'scrappy_pyronear.pipelines.FilteredIdsPipeline': 300
         }
     }
     start_urls = [API_URL]
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.total_cams = 0
+    
 
     def parse(self, response):
         """Parse the API response and yield PyronearItems."""
@@ -37,20 +42,13 @@ class FilteredIdsSpider(scrapy.Spider):
 
         short_key_cams, _ = extract_keys(data)
 
-        # Construct day path
-        date_path = datetime.now().strftime("%Y/%m/%d")
-
         for cam in data:
             yield PyronearItem(
                 id=cam.get(short_key_cams["camId"]),
                 name=cam.get(short_key_cams["camName"]),
-                azimuth=cam.get(short_key_cams["Azimuth"]),
-                last_moved=int(cam.get(short_key_cams["camLastMoved"], 0)),
-                image_url=(
-                    f"https://img.cdn.prod.alertwest.com/data/img/"
-                    f"{cam.get(short_key_cams['camId'])}/{date_path}/"
-                    f"{cam.get(short_key_cams['Screenshot'])}"
-                ),
+                azimuth=cam.get(short_key_cams["camAzimuth"]),
+                screenshot=cam.get(short_key_cams["camScreenshot"]),
+                offline=cam.get(short_key_cams["camOffline"]),
                 provider=cam.get(short_key_cams["providerName"]),
             )
         

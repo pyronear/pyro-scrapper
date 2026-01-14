@@ -2,10 +2,10 @@ from pathlib import Path
 
 # List of interesting properties to extract from the AlertWest API response
 INTERESTING_PROPERTIES = [
-    "Azimuth",
+    "camAzimuth",
     "camLastMoved",
     "camId",
-    "Screenshot",
+    "camScreenshot",
     "camOffline",
     "camName",
     "providerName",
