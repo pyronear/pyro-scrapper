@@ -37,14 +37,17 @@ class FilteredIdsSpider(scrapy.Spider):
 
     def parse(self, response):
         """Parse the API response and yield PyronearItems."""
-        data = json.loads(response.text)
+        data = json.loads(response)
+        # data = data.get("data", {}).get("cams", {}).get("data", [])
+        self.logger.debug(f"Data obtenue : {data}")
         self.total_cams = len(data)
 
         short_key_cams, _ = extract_keys(data)
 
         for cam in data:
+            self.logger.debug(f"Processing camera : {cam}")
             yield PyronearItem(
-                id=cam.get(short_key_cams["camId"]),
+                id=cam.get("id"),
                 name=cam.get(short_key_cams["camName"]),
                 azimuth=cam.get(short_key_cams["camAzimuth"]),
                 screenshot=cam.get(short_key_cams["camScreenshot"]),
