@@ -7,6 +7,8 @@ import requests
 from pathlib import Path
 from datetime import datetime
 from tqdm import tqdm
+from PIL import Image
+from io import BytesIO
 import scrapy
 from scrapy.pipelines.images import ImagesPipeline
 from twisted.internet.defer import TimeoutError as DeferTimeoutError
@@ -81,19 +83,21 @@ class FilteredIdsPipeline:
         if item.get("offline") == 1:
             self.stats["offline"] += 1
             is_valid = False
-        if not item.get("id") or not item.get("Screenshot"):
+        if not item.get("id") or not item.get("screenshot"):
             self.stats["missing_informations"] += 1
             is_valid = False
             
-        date_for_path = datetime.now().strftime("%Y/%m/%d")
-        image_url=(
-                    f"https://img.cdn.prod.alertwest.com/data/img/"
-                    f"{item.get('id')}/{date_for_path}/"
-                    f"{item.get('Screenshot')}"
-                )
-        if self._get_image_metadata(image_url) <= 640:
-            self.stats["low_res"] += 1
-            is_valid = False
+        if is_valid:
+            date_for_path = datetime.now().strftime("%Y/%m/%d")
+            image_url=(
+                        f"https://img.cdn.prod.alertwest.com/data/img/"
+                        f"{item.get('id')}/{date_for_path}/"
+                        f"{item.get('screenshot')}"
+                    )
+            image_width = self._get_image_width(image_url)
+            if image_width <= 640:
+                self.stats["low_res"] += 1
+                is_valid = False
 
         if is_valid:
             # All tests passed, add to good_ids
@@ -103,16 +107,20 @@ class FilteredIdsPipeline:
         return item
 
     @staticmethod
-    def _get_image_metadata(image_url):
-        # BIEN RENVOYER LA LARGEUR DE L'IMAGE
-        """Fetch only image metadata (headers) without downloading the full image."""
-        response = requests.head(image_url, timeout=1, allow_redirects=True)
-        response.raise_for_status()
-        
-        # Get image size from Content-Length header
-        content_length = response.headers.get("Content-Length")
-        
-        return int(content_length)
+    def _get_image_width(image_url):
+        """Fetch image width from response headers or actual image."""
+        try:
+            response = requests.head(image_url, timeout=1, allow_redirects=True)
+            response.raise_for_status()
+            
+            # Fallback: download image and check actual width
+            response = requests.get(image_url, timeout=1)
+            response.raise_for_status()
+            img = Image.open(BytesIO(response.content))
+            return img.width
+        except Exception:
+            # If image cannot be accessed, consider it invalid (return 0)
+            return 0
     
 
 
@@ -206,3 +214,23 @@ class GetImagesPipeline(ImagesPipeline):
         filename = f"{cam_id}_{scraped_at}.jpg"
 
         return os.path.join(cam_id, azimuth, filename)
+
+    def get_images(self, response, request, info, *, item_urls):
+        """Override to rescale images to 800x1200 before saving."""
+        path = self.file_path(request, response, info, item=None)
+        
+        try:
+            # Open the image
+            image = Image.open(BytesIO(response.body))
+            
+            # Rescale to 800x1200
+            image = image.resize((800, 1200), Image.Resampling.LANCZOS)
+            
+            # Save the image
+            image_path = os.path.join(self.store.basepath, path)
+            os.makedirs(os.path.dirname(image_path), exist_ok=True)
+            image.save(image_path, "JPEG")
+            
+            return [(True, image_path)]
+        except Exception as e:
+            return [(False, str(e))]

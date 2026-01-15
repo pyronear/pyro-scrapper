@@ -21,7 +21,8 @@ from scrapy_pyronear.config import (
     N_RASPBERRY,
     RASPBERRY_ID,
     CYCLE_REFRESH_JSON,
-    LAUNCH_WITH_CLEANING
+    LAUNCH_WITH_CLEANING,
+    Cache_DIR,
 )
 
 # Logging configuration
