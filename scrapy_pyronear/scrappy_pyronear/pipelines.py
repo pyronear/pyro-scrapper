@@ -91,7 +91,7 @@ class FilteredIdsPipeline:
                     f"{item.get('id')}/{date_for_path}/"
                     f"{item.get('Screenshot')}"
                 )
-        if self._get_image_metadata(image_url) < 640:
+        if self._get_image_metadata(image_url) <= 640:
             self.stats["low_res"] += 1
             is_valid = False
 
@@ -104,6 +104,7 @@ class FilteredIdsPipeline:
 
     @staticmethod
     def _get_image_metadata(image_url):
+        # BIEN RENVOYER LA LARGEUR DE L'IMAGE
         """Fetch only image metadata (headers) without downloading the full image."""
         response = requests.head(image_url, timeout=1, allow_redirects=True)
         response.raise_for_status()
@@ -134,7 +135,6 @@ class GetImagesPipeline(ImagesPipeline):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.images_dir = None
 
     def open_spider(self, spider):
         """Initialize pipeline when spider opens."""
@@ -161,11 +161,15 @@ class GetImagesPipeline(ImagesPipeline):
             
             
         date_for_path = datetime.now().strftime("%Y/%m/%d")
-        image_url=(
-                    f"https://img.cdn.prod.alertwest.com/data/img/"
-                    f"{item.get('id')}/{date_for_path}/"
-                    f"{item.get('Screenshot')}"
-                )
+        try:
+            image_url=(
+                        f"https://img.cdn.prod.alertwest.com/data/img/"
+                        f"{item.get('id')}/{date_for_path}/"
+                        f"{item.get('Screenshot')}"
+                    )
+        except Exception as e:
+            # Gérer l'erreur
+            return item
         
         scraped_at = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         yield scrapy.Request(
