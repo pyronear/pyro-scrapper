@@ -11,9 +11,12 @@ from PIL import Image
 from io import BytesIO
 import scrapy
 from scrapy.pipelines.images import ImagesPipeline
+from scrapy import Request
 from twisted.internet.defer import TimeoutError as DeferTimeoutError
 from twisted.internet.error import TCPTimedOutError, TimeoutError
 from twisted.web.client import ResponseNeverReceived
+from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
+
 
 
 class FilteredIdsPipeline:
@@ -39,6 +42,7 @@ class FilteredIdsPipeline:
         """Initialize pipeline when spider opens."""
         self.time = time.time()
         self.progress_bar = None
+        self.crawler = spider.crawler
         # Counters for statistics
         self.stats = {"thermal":0, "dot":0, "offline":0, "missing_informations":0, "low_res":0, "total":0}
         
@@ -47,6 +51,7 @@ class FilteredIdsPipeline:
         """Save collected IDs to JSON file when spider closes."""
         if self.progress_bar:
             self.progress_bar.close()
+            
         print(f"\n Unkeeped {self.stats['thermal']} thermal cameras"
             f"{self.stats['dot']} DOT cameras,"
             f"{self.stats['offline']} offline cameras,"
@@ -57,6 +62,7 @@ class FilteredIdsPipeline:
             json.dump(self.good_ids, f, indent=2)
         print(f"Saved {len(self.good_ids['ids'])} camera  among {self.stats['total']} total cameras to {self.output_file}.")
 
+    @inlineCallbacks
     def process_item(self, item, spider):
         """Process item and apply filters."""
         
@@ -89,12 +95,14 @@ class FilteredIdsPipeline:
             
         if is_valid:
             date_for_path = datetime.now().strftime("%Y/%m/%d")
-            image_url=(
-                        f"https://img.cdn.prod.alertwest.com/data/img/"
-                        f"{item.get('id')}/{date_for_path}/"
-                        f"{item.get('screenshot')}"
-                    )
-            image_width = self._get_image_width(image_url)
+            image_url = (
+                f"https://img.cdn.prod.alertwest.com/data/img/"
+                f"{item.get('id')}/{date_for_path}/"
+                f"{item.get('screenshot')}"
+            )
+            
+            # Asynchronous width check
+            image_width = yield self._get_image_width(image_url, spider)
             if image_width <= 640:
                 self.stats["low_res"] += 1
                 is_valid = False
@@ -104,24 +112,38 @@ class FilteredIdsPipeline:
             self.good_ids["ids"].append(item.get("id"))
             
         self.progress_bar.update(1)
-        return item
+        returnValue(item)
 
-    @staticmethod
-    def _get_image_width(image_url):
-        """Fetch image width from response headers or actual image."""
-        try:
-            response = requests.head(image_url, timeout=1, allow_redirects=True)
-            response.raise_for_status()
+    @inlineCallbacks
+    def _get_image_width(self, image_url, spider):
+        """
+        Fetch image width by downloading the minimal JPEG header using HTTP Range.
+        Fully async & parallel via Scrapy downloader.
+        """
+        try:  
+            request = Request(
+                    image_url,
+                    headers={
+                        "Range": "bytes=0-32767"  # 32 KB
+                    },
+                    dont_filter=True,
+                    errback=lambda _: None,
+                    priority=10,
+                )
             
-            # Fallback: download image and check actual width
-            response = requests.get(image_url, timeout=1)
-            response.raise_for_status()
-            img = Image.open(BytesIO(response.content))
-            return img.width
+            response = yield self.crawler.engine.download(request)
+            data = response.body
+
+            # Safety: ensure we have enough data
+            if not data or len(data) < 512:
+                returnValue(0)
+
+            img = Image.open(BytesIO(data))
+            width = img.width
+            returnValue(width)
+
         except Exception:
-            # If image cannot be accessed, consider it invalid (return 0)
-            return 0
-    
+            returnValue(0)
 
 
 class GetImagesPipeline(ImagesPipeline):

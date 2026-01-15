@@ -58,8 +58,10 @@ class GetImagesSpider(scrapy.Spider):
         # Get the full camera json from the API and the keys
         data = json.loads(response.text)
         short_key_cams, _ = extract_keys(data)
+        data_cams = data.get("data", {}).get("cams", {}).get("data", [])
 
-        for cam in data:
+
+        for cam in data_cams:
             # Process only cameras in the camera_ids list
             if cam.get(short_key_cams["camId"]) in self.camera_ids:
                 yield PyronearItem(
