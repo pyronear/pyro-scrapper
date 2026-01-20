@@ -168,6 +168,7 @@ class GetImagesPipeline(ImagesPipeline):
 
     def open_spider(self, spider):
         """Initialize pipeline when spider opens."""
+        super().open_spider(spider)
         self.progress_bar = None
         self.timeout_cam = 0
         
@@ -179,40 +180,36 @@ class GetImagesPipeline(ImagesPipeline):
        
     def get_media_requests(self, item, info):
         """Download and save image."""
-        
         if self.progress_bar is None:
-            self.total = info.spider.total_cams_to_get_image_of
+            total = len(getattr(info.spider, "camera_ids"))
             self.progress_bar = tqdm(
-                total=self.total,
+                total=total,
                 desc="Downloading images 🚀 ",
                 bar_format="{l_bar}\033[92m{bar}\033[0m| {n_fmt}/{total_fmt} images",
                 unit="image",
             )
-            
-            
+
         date_for_path = datetime.now().strftime("%Y/%m/%d")
-        try:
-            image_url=(
-                        f"https://img.cdn.prod.alertwest.com/data/img/"
-                        f"{item.get('id')}/{date_for_path}/"
-                        f"{item.get('Screenshot')}"
-                    )
-        except Exception as e:
-            # Gérer l'erreur
-            return item
-        
+        screenshot = item.get("screenshot")
+        if not screenshot:
+            return  # no request if missing
+
+        image_url = (
+            f"https://img.cdn.prod.alertwest.com/data/img/"
+            f"{item.get('id')}/{date_for_path}/"
+            f"{screenshot}"
+        )
+
         scraped_at = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         yield scrapy.Request(
             image_url,
             meta={
-                "id": item["id"],
-                "azimuth": item["azimuth"],
+                "id": item.get("id"),
+                "azimuth": item.get("azimuth"),
                 "scraped_at": scraped_at,
             },
         )
 
-        return item
-    
     def item_completed(self, results, item, info):
         """Update progress bar after each item is processed."""
         self.progress_bar.update(1)
@@ -237,22 +234,22 @@ class GetImagesPipeline(ImagesPipeline):
 
         return os.path.join(cam_id, azimuth, filename)
 
-    def get_images(self, response, request, info, *, item_urls):
-        """Override to rescale images to 800x1200 before saving."""
-        path = self.file_path(request, response, info, item=None)
+    # def get_images(self, response, request, info, *, item_urls):
+    #     """Override to rescale images to 800x1200 before saving."""
+    #     path = self.file_path(request, response, info, item=None)
         
-        try:
-            # Open the image
-            image = Image.open(BytesIO(response.body))
+    #     try:
+    #         # Open the image
+    #         image = Image.open(BytesIO(response.body))
             
-            # Rescale to 800x1200
-            image = image.resize((800, 1200), Image.Resampling.LANCZOS)
+    #         # Rescale to 800x1200
+    #         image = image.resize((800, 1200), Image.Resampling.LANCZOS)
             
-            # Save the image
-            image_path = os.path.join(self.store.basepath, path)
-            os.makedirs(os.path.dirname(image_path), exist_ok=True)
-            image.save(image_path, "JPEG")
+    #         # Save the image
+    #         image_path = os.path.join(self.store.basepath, path)
+    #         os.makedirs(os.path.dirname(image_path), exist_ok=True)
+    #         image.save(image_path, "JPEG")
             
-            return [(True, image_path)]
-        except Exception as e:
-            return [(False, str(e))]
+    #         return [(True, image_path)]
+    #     except Exception as e:
+    #         return [(False, str(e))]

@@ -27,33 +27,16 @@ class GetImagesSpider(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.good_ids_path = Path(__file__).parent.parent.parent / "good_ids.json"
-        self.total_cams_to_get_image_of = 0
-        # Accept camera_ids as parameter
-        self.camera_ids = kwargs.get("camera_ids", [])
-
+        
+        # Accept camera_ids as parameter and convert from JSON string to list
+        camera_ids = kwargs.get("camera_ids", [])
+        if isinstance(camera_ids, str):
+            camera_ids = json.loads(camera_ids)
+        self.camera_ids = camera_ids
+        self.total_cams_to_get_image_of = len(self.camera_ids)
 
     def parse(self, response):
         """Load camera IDs and yield requests for matching cameras."""
-
-        # Load camera IDs from the parameter
-        if self.camera_ids:
-            self.logger.info(f"Using {len(self.camera_ids)} camera IDs from parameter")
-        else:
-            # Fallback to good_ids.json
-            if not self.good_ids_path.exists():
-                self.logger.error(f"File good_ids.json not found: {self.good_ids_path}")
-                return
-
-            try:
-                with open(self.good_ids_path, "r") as f:
-                    good_ids_data = json.load(f)
-            except json.JSONDecodeError:
-                self.logger.error(f"Invalid JSON in {self.good_ids_path}")
-                return
-
-            self.camera_ids = good_ids_data.get("ids", [])
-            
-        self.total_cams_to_get_image_of = len(self.camera_ids)
 
         # Get the full camera json from the API and the keys
         data = json.loads(response.text)
