@@ -233,23 +233,35 @@ class GetImagesPipeline(ImagesPipeline):
         filename = f"{cam_id}_{scraped_at}.jpg"
 
         return os.path.join(cam_id, azimuth, filename)
+    
+    def convert_image(self, image, size=None, response_body=None):
+        """
+        Resize the image to a fixed width of 1280px while keeping aspect ratio.
+        Always outputs JPEG bytes. Any failure raises a RuntimeError.
+        """
+        try:
+            image = image.convert("RGB")
+        except Exception as e:
+            raise RuntimeError("Failed to convert image to RGB") from e
 
-    # def get_images(self, response, request, info, *, item_urls):
-    #     """Override to rescale images to 800x1200 before saving."""
-    #     path = self.file_path(request, response, info, item=None)
-        
-    #     try:
-    #         # Open the image
-    #         image = Image.open(BytesIO(response.body))
-            
-    #         # Rescale to 800x1200
-    #         image = image.resize((800, 1200), Image.Resampling.LANCZOS)
-            
-    #         # Save the image
-    #         image_path = os.path.join(self.store.basepath, path)
-    #         os.makedirs(os.path.dirname(image_path), exist_ok=True)
-    #         image.save(image_path, "JPEG")
-            
-    #         return [(True, image_path)]
-    #     except Exception as e:
-    #         return [(False, str(e))]
+        original_w, original_h = image.size
+        if original_w <= 0 or original_h <= 0:
+            raise RuntimeError(f"Invalid image size: {original_w}x{original_h}")
+
+        target_w = 1280
+        ratio = target_w / float(original_w)
+        target_h = max(1, int(round(original_h * ratio)))
+
+        try:
+            image = image.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        except Exception as e:
+            raise RuntimeError("Failed to resize image") from e
+
+        buf = BytesIO()
+        try:
+            image.save(buf, format="JPEG")
+            buf.seek(0)  # Reset buffer position for reading
+        except Exception as e:
+            raise RuntimeError("Failed to save resized image as JPEG") from e
+
+        return image, buf
