@@ -23,18 +23,13 @@ jobs:
 
       - name: Install dependencies
         run:  |
-          # Clone et installe pyro-engine
-          git clone https://github.com/pyronear/pyro-engine.git
-          cd pyro-engine
-          pip install -r requirements.txt
-          pip install -e .
-          cd ..
+          # Clone et installe pyro-engine dans /tmp
+          git clone https://github.com/pyronear/pyro-engine.git /tmp/pyro-engine
+          pip install -r /tmp/pyro-engine/requirements.txt
+          pip install -e /tmp/pyro-engine
           
           # Installe les dépendances du projet actuel
           pip install -r ./scrapy_pyronear/requirements.txt
-
-          # Install the scrapy_pyronear package
-          pip install -e ./scrapy_pyronear
 
       - name: Run tests
         run: pytest ./scrapy_pyronear/tests
