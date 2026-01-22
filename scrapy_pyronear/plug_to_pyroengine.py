@@ -22,6 +22,7 @@ temporal inference.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import shutil
 from dataclasses import dataclass
@@ -192,6 +193,101 @@ def handle_detection(folder: Path, sequence: List[ImageEntry], output_dir: Path)
         print(f"  Error copying {folder}: {e}")
 
 
+def run_inference_pipeline(
+    images_dir: Path,
+    output_dir: Path,
+    n_consecutive: int = 6,
+    max_gap_seconds: int = 120,
+    conf_thresh: float = 0.15,
+    logger: Optional[logging.Logger] = None,
+) -> int:
+    """Run the complete inference pipeline on collected images.
+
+    This is the main entry point for the inference workflow. It processes all
+    images in the images directory, detects fire sequences, and saves results
+    to the annotations directory.
+
+    Args:
+        images_dir: Root images directory path.
+        output_dir: Output directory for detected sequences.
+        n_consecutive: Required number of consecutive images in a sequence.
+        max_gap_seconds: Maximum allowed gap between consecutive images in seconds.
+        conf_thresh: Confidence threshold for fire detection.
+        logger: Optional logger instance (defaults to print statements).
+
+    Returns:
+        Number of folders with detections.
+
+    Raises:
+        Exception: If pyroengine fails to initialize.
+
+    """
+    log = logger or logging.getLogger(__name__)
+
+    if not images_dir.exists():
+        log.warning(f"Images directory not found: {images_dir}")
+        return 0
+
+    log.info("🔥 Initializing pyroengine for inference...")
+    try:
+        engine = Engine()
+        log.info(f"✅ Engine loaded with confidence threshold: {conf_thresh}")
+    except Exception as e:
+        log.error(f"❌ Error loading pyroengine: {e}")
+        raise
+
+    total_folders = 0
+    total_sequences = 0
+    total_detections = 0
+    processed_folders = set()
+
+    log.info(f"📸 Processing images from: {images_dir}")
+    log.info(f"💾 Detection output directory: {output_dir}")
+    log.info(f"🔍 Looking for sequences of {n_consecutive} images with max gap of {max_gap_seconds}s")
+
+    for folder in iter_leaf_folders(images_dir):
+        total_folders += 1
+        seqs = scan_folder_for_sequences(folder, n=n_consecutive, max_gap_seconds=max_gap_seconds)
+        if not seqs:
+            continue
+
+        total_sequences += len(seqs)
+        cam_id = folder.parent.name
+        azimuth = folder.name
+        log.info(f"📁 [{total_folders}] Camera {cam_id} (azimuth {azimuth}) - Found {len(seqs)} sequence(s)")
+
+        # Process each sequence with pyroengine
+        for idx, seq in enumerate(seqs, 1):
+            first_ts = seq[0].ts.strftime("%Y%m%d_%H%M%S")
+            last_ts = seq[-1].ts.strftime("%Y%m%d_%H%M%S")
+            log.info(
+                f"  Sequence #{idx}: {first_ts} -> {last_ts} ({len(seq)} images)",
+            )
+
+            has_detection, max_conf = run_inference_on_sequence(engine, seq, conf_thresh)
+            log.info(f"    Max confidence: {max_conf:.4f}", end="")
+
+            if has_detection:
+                log.info(" 🔥 DETECTION!")
+                # Only copy folder once even if multiple sequences detected
+                if folder not in processed_folders:
+                    handle_detection(folder, seq, output_dir)
+                    processed_folders.add(folder)
+                    total_detections += 1
+            else:
+                log.info(" (no detection)")
+
+    log.info(f"\n{'=' * 70}")
+    log.info("📊 Inference Summary:")
+    log.info(f"   Scanned folders: {total_folders}")
+    log.info(f"   Valid sequences found: {total_sequences}")
+    log.info(f"   Folders with fire detections: {total_detections}")
+    log.info(f"   Results saved to: {output_dir}")
+    log.info(f"{'=' * 70}")
+
+    return total_detections
+
+
 def main(
     images_dir: Optional[str],
     n: int,
@@ -213,67 +309,20 @@ def main(
 
     """
     root = Path(images_dir) if images_dir else images_root_from_this_file()
-    if not root.exists():
-        print(f"Images directory not found: {root}")
-        return 1
-
     output_path = Path(output_dir) if output_dir else root.parent / "annotations"
-    print("Initializing pyroengine...")
+
     try:
-        engine = Engine()
-        print(f"Engine loaded with confidence threshold: {conf_thresh}")
+        run_inference_pipeline(
+            images_dir=root,
+            output_dir=output_path,
+            n_consecutive=n,
+            max_gap_seconds=max_gap_seconds,
+            conf_thresh=conf_thresh,
+        )
+        return 0
     except Exception as e:
-        print(f"Error loading pyroengine: {e}")
+        print(f"Error: {e}")
         return 1
-
-    total_folders = 0
-    total_sequences = 0
-    total_detections = 0
-    processed_folders = set()  # Track folders already handled to avoid duplicates
-
-    print(f"\nProcessing folders from: {root}")
-    print(f"Detection output directory: {output_path}")
-    print(f"Looking for sequences of {n} images with max gap of {max_gap_seconds}s\n")
-
-    for folder in iter_leaf_folders(root):
-        total_folders += 1
-        seqs = scan_folder_for_sequences(folder, n=n, max_gap_seconds=max_gap_seconds)
-        if not seqs:
-            continue
-
-        total_sequences += len(seqs)
-        print(f"\n[{total_folders}] Folder: {folder} - Found {len(seqs)} sequence(s)")
-
-        # Process each sequence with pyroengine
-        for idx, seq in enumerate(seqs, 1):
-            first_ts = seq[0].ts.strftime("%Y%m%d_%H%M%S")
-            last_ts = seq[-1].ts.strftime("%Y%m%d_%H%M%S")
-            print(
-                f"  Sequence #{idx}: {first_ts} -> {last_ts} ({len(seq)} images)",
-                end=" ",
-            )
-
-            has_detection, max_conf = run_inference_on_sequence(engine, seq, conf_thresh)
-            print(f"| Max confidence: {max_conf:.4f}", end="")
-
-            if has_detection:
-                print(" 🔥 DETECTION!")
-                # Only copy folder once even if multiple sequences detected
-                if folder not in processed_folders:
-                    handle_detection(folder, seq, output_path)
-                    processed_folders.add(folder)
-                    total_detections += 1
-            else:
-                print(" (no detection)")
-
-    print(f"\n{'=' * 60}")
-    print("Summary:")
-    print(f"  Scanned folders: {total_folders}")
-    print(f"  Valid sequences found: {total_sequences}")
-    print(f"  Folders with detections: {total_detections}")
-    print(f"  Detection output: {output_path}")
-    print(f"{'=' * 60}")
-    return 0
 
 
 if __name__ == "__main__":
@@ -288,7 +337,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-gap",
         type=int,
-        default=60,
+        default=120,
         help="Maximum allowed gap in seconds between consecutive images",
     )
     parser.add_argument(

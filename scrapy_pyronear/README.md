@@ -1,12 +1,55 @@
-# AlertWest Image Scraping Pipeline
+# PyroNear Scraper - Continuous Wildfire Detection Pipeline
 
-This repository provides a high‑throughput Scrapy pipeline to download camera images from AlertWest, plus a continuous runner to execute the spider at a fixed interval.
+A production-ready Scrapy pipeline for automated camera image scraping and wildfire detection using temporal analysis.
 
-# ===== STARTER INFO =====
-## Prerequisites
+---
+
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Installation](#installation)
+3. [Configuration](#configuration)
+4. [Usage](#usage)
+5. [Architecture](#architecture)
+6. [Scraping Details](#scraping-details)
+7. [Inference Details](#inference-details)
+
+---
+
+## Quick Start
+
+### Prerequisites
 
 - Python 3.12.0
-- Conda or pip for dependency management
+- Conda or pip
+
+### Installation
+
+```bash
+conda create --name pyronear python=3.12
+conda activate pyronear
+pip install -r requirements.txt
+```
+
+### First Run
+
+1. **Configure your Raspberry Pi ID** in `config.py`:
+   ```python
+   RASPBERRY_ID = 0  # Change this to your Raspberry Pi number (0 to N_RASPBERRY-1)
+   ```
+
+2. **Start the continuous workflow**:
+   ```bash
+   python -m scrapy_pyronear.continuous_workflow
+   ```
+
+That's it! The workflow automatically:
+- Fetches and filters camera IDs during the day
+- Scrapes images from assigned cameras
+- Runs wildfire detection at night
+- Cleans up images after inference
+
+---
 
 ## Installation
 
@@ -16,112 +59,149 @@ conda activate pyronear
 pip install -r requirements.txt
 ```
 
-# ===== RUNNING INFO =====
-## Continuous Scraping (recommended entrypoint)
-
-The continuous runner is the easiest way to keep images up‑to‑date.
-
-- What it does: repeatedly launches the Scrapy spider at a fixed interval (no overlap). It logs each cycle, handles Ctrl+C gracefully, and reuses your Scrapy project settings, spider, and pipelines.
-- How it works with Scrapy: it shells out `scrapy crawl alertwest` inside this project, so the spider, pipelines, and `settings.py` remain the single source of truth. The runner only schedules runs; it doesn’t change scraping logic.
-
-### Quick start
-
+For wildfire detection (pyroengine), also install:
 ```bash
-# Default interval (60s)
-python continuous_scraper.py
-
-# Custom interval (e.g., 90s)
-python continuous_scraper.py --interval 90
-
-# With Raspberry Pi distribution
-python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 0
-
-# With Scrapy settings override
-python continuous_scraper.py --interval 60 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
-
-# Combined: Raspberry Pi + Scrapy settings
-python continuous_scraper.py --interval 60 --n_raspberry 2 --raspberry_id 1 -s DOWNLOAD_TIMEOUT=3 -s CONCURRENT_ITEMS=100
+cd ../../pyro-engine
+pip install -r requirements.txt
+pip install -e .
 ```
 
-Notes
-- Graceful stop: press Ctrl+C; the current cycle finishes, then the runner exits.
-- If a cycle takes longer than the interval, the next cycle starts immediately after.
-- Outputs: `alertwest.json` is overwritten each cycle (per `settings.py`), and images are saved under `images/`.
+---
 
-## One‑off crawl (single run)
+## Configuration
 
-```bash
-scrapy crawl alertwest
-```
+### `config.py` - Main Configuration
 
-### Run with multiple raspberry pis
-
-Parameters :
-- `n_raspberry` : total number of raspberry pis
-- `raspberry_id` : the id of the raspberry running the code starting from 0, if there are 2 raspberries and this is the first one, the ID is 0.
-
-For example, with 2 raspberries and the first one is running :
-
-```bash
-scrapy crawl alertwest -a n_raspberry=2 -a raspberry_id=0
-```
-### Run with custom parameters
-
-```bash
-scrapy crawl alertwest -s DOWNLOAD_TIMEOUT=3 CONCURRENT_ITEMS=100
-```
-
-### Common settings (see `settings.py`)
-
-Examples:
+This file controls the overall workflow behavior. **Modify `RASPBERRY_ID` on each Raspberry Pi device.**
 
 | Setting | Default | Description |
-|--------|---------|-------------|
-| `DOWNLOAD_TIMEOUT` | 2s | Max time to download an image |
-| `CONCURRENT_ITEMS` | 400 | Parallel items processed in the pipeline |
-| `CONCURRENT_REQUESTS` | 64 | Max concurrent HTTP requests |
-| `CONCURRENT_REQUESTS_PER_DOMAIN` | 32 | Concurrent requests per domain |
+|---------|---------|-------------|
+| `INTERVAL` | 60s | Wait time between scraping cycles during the day |
+| `N_RASPBERRY` | 2 | Total number of Raspberry Pi devices in your network |
+| `RASPBERRY_ID` | 0 | **ID of this Raspberry Pi (0 to N_RASPBERRY-1)** - Change per device |
+| `LAUNCH_WITH_CLEANING` | True | Enable filtering of low-quality cameras |
+| `CACHE_DIR` | `data/alertwest_cache` | Directory for cached JSON files |
 
-### Export metadata to JSON
+**⚠️ Important**: On each Raspberry Pi, update `RASPBERRY_ID`:
+- Raspberry Pi 1: `RASPBERRY_ID = 0`
+- Raspberry Pi 2: `RASPBERRY_ID = 1`
+- etc.
+
+### `scrappy_pyronear/spiders/config.py` - Spider Configuration
+
+Controls what data is fetched from the AlertWest API and where to cache it.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `INTERESTING_PROPERTIES` | See file | Camera properties to extract (azimuth, name, location, etc.) |
+| `API_URL` | AlertWest API | Endpoint for camera metadata |
+| `CACHE_DIR` | `data/alertwest_cache` | Cache directory for API responses |
+
+### `scrappy_pyronear/settings.py` - Scrapy Settings
+
+Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `CONCURRENT_REQUESTS` | 64 | Max parallel HTTP requests |
+| `CONCURRENT_REQUESTS_PER_DOMAIN` | 32 | Requests per domain (be polite) |
+| `CONCURRENT_ITEMS` | 400 | Parallel items in pipeline |
+| `DOWNLOAD_TIMEOUT` | 2s | Max wait for image download |
+| `RETRY_ENABLED` | False | Disable retries for speed |
+
+---
+
+## Usage
+
+### Standard Continuous Workflow
 
 ```bash
-scrapy crawl alertwest -o alertwest.json
+python -m scrapy_pyronear.continuous_workflow
 ```
 
-### Debug mode
+The workflow cycles automatically:
+- **Day**: Fetches camera IDs → Scrapes images in cycles
+- **Night**: Runs wildfire detection on collected images
+
+### Command-Line Options
+
+#### Override Scrapy Settings
+
+Increase timeout for slow networks:
+```bash
+python -m scrapy_pyronear.continuous_workflow -s DOWNLOAD_TIMEOUT=5
+```
+
+Increase concurrency for faster scraping:
+```bash
+python -m scrapy_pyronear.continuous_workflow -s CONCURRENT_REQUESTS=128 -s CONCURRENT_ITEMS=500
+```
+
+#### Force Re-filtering Camera IDs
+
+Normally, `good_ids.json` is fetched once per day. Force a refresh:
+```bash
+python -m scrapy_pyronear.continuous_workflow --force-scrape
+```
+
+This is useful after the API changes or if you want to update the camera filter criteria.
+
+#### Combined Example
 
 ```bash
-scrapy crawl alertwest -s LOG_LEVEL=DEBUG
+python -m scrapy_pyronear.continuous_workflow --force-scrape -s DOWNLOAD_TIMEOUT=5 -s CONCURRENT_REQUESTS=128
 ```
 
-## Tests
+### Single Spider Runs (Advanced)
 
+Fetch and filter all camera IDs once:
 ```bash
-# Bash / Linux / macOS
-pytest -v tests/
-
-# Windows PowerShell
-pytest -v .\tests\
+scrapy crawl spider_filtered_ids
 ```
 
-## Project structure
-
-```
-scrappy_pyronear/
-├── spiders/
-│   └── alertwest_spider.py      # Main spider
-├── items.py                     # Item definitions
-├── pipelines.py                 # Image download pipeline
-├── settings.py                  # Scrapy configuration
-└── logformatter.py              # Custom log formatter
-images/                          # Output directory (generated)
-tests/                           # Unit tests
-alertwest.json                   # Optional JSON export of metadata
+Scrape images for specific cameras (requires `good_ids.json`):
+```bash
+scrapy crawl spider_get_images -a camera_ids='[1987, 15871, 1939]'
 ```
 
-## How it works
+Export metadata as JSON:
+```bash
+scrapy crawl spider_filtered_ids -o cameras.json
+```
 
-### 1) Spider (`alertwest_spider.py`)
+Debug mode (verbose logs):
+```bash
+python -m scrapy_pyronear.continuous_workflow -s LOG_LEVEL=DEBUG
+```
+
+---
+
+## Architecture
+
+### Overview
+
+The continuous workflow orchestrates a 24-hour cycle combining camera scraping and wildfire detection.
+
+1. **Daytime (e.g., 6 AM - 9 PM)**:
+   - **Fetch Camera IDs**: Periodically retrieve and filter camera IDs from the AlertWest API based on location and other criteria.
+   - **Scrape Images**: Download images from assigned cameras in a distributed manner across available Raspberry Pi devices.
+
+2. **Nighttime (e.g., 9 PM - 6 AM)**:
+   - **Wildfire Detection**: Analyze collected images for wildfire detection using the pyroengine model.
+   - **Cleanup**: Remove images older than 2 days to save space.
+
+### Components
+
+- **Scrapy Spiders**: `alertwest_spider.py` for scraping camera metadata and images.
+- **Continuous Runner**: `continuous_scraper.py` to run the spider at regular intervals.
+- **Wildfire Detection**: Integrated pyroengine model inference on scraped images.
+- **Logging**: Custom log formatter to reduce noise and highlight important events.
+
+---
+
+## Scraping Details
+
+### Spider: `alertwest_spider.py`
 
 - Sends a GET request to the AlertWest API.
 - Parses the JSON response to extract:
@@ -136,7 +216,7 @@ https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{YYYY/MM/DD}/{img_name}
 
 - Yields `PyronearItem` objects with metadata and `image_url`.
 
-### 2) Items (`items.py`)
+### Items: `items.py`
 
 `PyronearItem` fields:
 - `id`: camera identifier
@@ -146,7 +226,7 @@ https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{YYYY/MM/DD}/{img_name}
 - `image_url`: image URL to download
 - `valid_url`: URL validity flag
 
-### 3) Pipeline (`pipelines.py`)
+### Pipeline: `pipelines.py`
 
 Inherits from `scrapy.pipelines.images.ImagesPipeline` and:
 
@@ -158,7 +238,7 @@ Inherits from `scrapy.pipelines.images.ImagesPipeline` and:
 | `file_path()` | Storage structure: `{cam_id}/{azimuth}/{cam_id}_{scraping_timestamp}.jpg` |
 | `close_spider()` | Prints a summary (failures, missing URLs, elapsed time) |
 
-### 4) Concurrency tuning
+### Concurrency tuning
 
 - `CONCURRENT_REQUESTS = 64`: avoid overwhelming the network
 - `CONCURRENT_REQUESTS_PER_DOMAIN = 32`: be polite to the remote host
@@ -166,14 +246,14 @@ Inherits from `scrapy.pipelines.images.ImagesPipeline` and:
 - `RETRY_ENABLED = False`: skip retries for faster throughput
 - `DOWNLOAD_TIMEOUT = 2s`: aggressive timeout for speed (tune as needed)
 
-### 5) Error handling
+### Error handling
 
 A custom `LogFormatter` silences timeout noise. Counters track:
 - Timeouts: images not downloaded due to deadlines
 - Camera down: HTTP 4xx/5xx
 - Missing URLs: incomplete JSON preventing URL construction
 
-### 6) Image storage structure
+### Image storage structure
 
 ```
 images/
@@ -182,7 +262,7 @@ images/
             └── {cam_id}_{scraping_timestamp}.jpg
 ```
 
-## Configuration
+### Scrapy Settings
 
 Key Scrapy options in `settings.py`:
 
@@ -194,7 +274,7 @@ RETRY_ENABLED = False
 LOG_FORMATTER = "scrappy_pyronear.logformatter.SilentTimeoutLogFormatter"
 ```
 
-## Output example
+### Output example
 
 ```
 Downloading images 🚀 : 100%|█████████████████████████████| 11702/11702 images
@@ -205,16 +285,16 @@ Timed out for 45 cameras among 11702 total cameras.
 Time taken: 2.53 minutes
 ```
 
-## Helpers for troubleshooting
+### Helpers for troubleshooting
 
-### Slow scraping
+#### Slow scraping
 
 Increase concurrency:
 ```bash
 scrapy crawl alertwest -s CONCURRENT_REQUESTS=128 CONCURRENT_ITEMS=500
 ```
 
-### Too many timeouts
+#### Too many timeouts
 
 Increase the timeout:
 ```bash
@@ -223,11 +303,13 @@ scrapy crawl alertwest -s DOWNLOAD_TIMEOUT=10
 
 ---
 
-# Wildfire Detection with pyro-engine
+## Inference Details
+
+### Wildfire Detection with pyro-engine
 
 The `plug_to_pyroengine.py` script enables automated wildfire detection on scraped camera images using temporal analysis.
 
-## How it works
+#### How it works
 
 1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images (default: 6) where timestamps are separated by at most a specified gap (default: 60 seconds).
 
@@ -235,7 +317,7 @@ The `plug_to_pyroengine.py` script enables automated wildfire detection on scrap
 
 3. **Output**: Folders containing sequences with detected wildfires are copied to an `annotations/` directory for further review.
 
-## Usage
+#### Usage
 
 First, ensure you're in the `pyronear` conda environment with pyroengine installed:
 
@@ -244,7 +326,7 @@ conda activate pyronear
 python plug_to_pyroengine.py --n 6 --max-gap 60 --conf-thresh 0.15
 ```
 
-## Options
+#### Options
 
 - `--images-dir`: Root images directory (defaults to `images/` next to the script)
 - `--n`: Required number of consecutive images in a sequence (default: 6)
@@ -252,14 +334,14 @@ python plug_to_pyroengine.py --n 6 --max-gap 60 --conf-thresh 0.15
 - `--conf-thresh`: Confidence threshold for wildfire detection (default: 0.15)
 - `--output-dir`: Output directory for detected sequences (default: `annotations/` next to images)
 
-## Example
+#### Example
 
 ```bash
 # Analyze sequences of 8 images with 30-second max gap and 0.20 confidence threshold
 python plug_to_pyroengine.py --n 8 --max-gap 30 --conf-thresh 0.20 --output-dir ./detections
 ```
 
-## Prerequisites for Detection
+#### Prerequisites for Detection
 
 Before running wildfire detection, install pyroengine and its dependencies:
 
