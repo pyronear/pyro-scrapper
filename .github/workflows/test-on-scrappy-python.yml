@@ -22,16 +22,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run:  |
-          # Clone et installe pyro-engine
-          git clone https://github.com/pyronear/pyro-engine.git
-          cd pyro-engine
-          pip install -r requirements.txt
-          pip install -e
-          cd ..
-          
-          # Installe les dépendances du projet actuel
-          pip install -r ./scrapy_pyronear/requirements.txt
+        run:  pip install -r ./scrapy_pyronear/requirements.txt
 
       - name: Run tests
         run: pytest ./scrapy_pyronear/tests
