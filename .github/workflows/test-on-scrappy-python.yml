@@ -33,5 +33,8 @@ jobs:
           # Installe les dépendances du projet actuel
           pip install -r ./scrapy_pyronear/requirements.txt
 
+          # Install the scrapy_pyronear package
+          pip install -e ./scrapy_pyronear
+
       - name: Run tests
         run: pytest ./scrapy_pyronear/tests
