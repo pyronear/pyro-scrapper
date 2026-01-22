@@ -18,11 +18,7 @@ class FilteredIdsSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
 
     name = "spider_filtered_ids"
-    custom_settings = {
-        'ITEM_PIPELINES': {
-            'scrappy_pyronear.pipelines.FilteredIdsPipeline': 300
-        }
-    }
+    custom_settings = {"ITEM_PIPELINES": {"scrappy_pyronear.pipelines.FilteredIdsPipeline": 300}}
     start_urls = [API_URL]
 
     def __init__(self, *args, **kwargs):

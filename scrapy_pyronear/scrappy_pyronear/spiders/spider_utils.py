@@ -1,6 +1,5 @@
 """Utility functions for the AlertWest spiders."""
 
-
 from .config import (
     INTERESTING_PROPERTIES,
 )

@@ -59,7 +59,9 @@ class FilteredIdsPipeline:
         )
         with open(self.output_file, "w") as f:
             json.dump(self.good_ids, f, indent=2)
-        print(f"Saved {len(self.good_ids['ids'])} camera  among {self.stats['total']} total cameras to {self.output_file}.")
+        print(
+            f"Saved {len(self.good_ids['ids'])} camera  among {self.stats['total']} total cameras to {self.output_file}."
+        )
 
     @inlineCallbacks
     def process_item(self, item, spider):
@@ -94,9 +96,7 @@ class FilteredIdsPipeline:
         if is_valid:
             date_for_path = datetime.now().strftime("%Y/%m/%d")
             image_url = (
-                f"https://img.cdn.prod.alertwest.com/data/img/"
-                f"{item.get('id')}/{date_for_path}/"
-                f"{item.get('screenshot')}"
+                f"https://img.cdn.prod.alertwest.com/data/img/{item.get('id')}/{date_for_path}/{item.get('screenshot')}"
             )
 
             # Asynchronous width check
@@ -191,11 +191,7 @@ class GetImagesPipeline(ImagesPipeline):
         if not screenshot:
             return  # no request if missing
 
-        image_url = (
-            f"https://img.cdn.prod.alertwest.com/data/img/"
-            f"{item.get('id')}/{date_for_path}/"
-            f"{screenshot}"
-        )
+        image_url = f"https://img.cdn.prod.alertwest.com/data/img/{item.get('id')}/{date_for_path}/{screenshot}"
 
         scraped_at = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         yield scrapy.Request(

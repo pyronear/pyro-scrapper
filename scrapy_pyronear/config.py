@@ -1,4 +1,5 @@
 """Configuration parameters for the continuous scraper."""
+
 from pathlib import Path
 
 # Duration (in seconds) between each scraping cycle

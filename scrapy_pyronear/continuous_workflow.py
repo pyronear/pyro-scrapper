@@ -115,9 +115,7 @@ class ContinuousWorkflow:
                 logger.info("✅ spider_filtered_ids completed successfully")
                 return True
             else:
-                logger.error(
-                    f"❌ spider_filtered_ids failed with code {result.returncode}"
-                )
+                logger.error(f"❌ spider_filtered_ids failed with code {result.returncode}")
                 return False
 
         except Exception as e:
@@ -145,9 +143,7 @@ class ContinuousWorkflow:
             if rid == self.raspberry_id:
                 splitted_for_me = subset
 
-        logger.info(
-            f"📡 Assigned {len(splitted_for_me)} cameras to Raspberry Pi {self.raspberry_id}"
-        )
+        logger.info(f"📡 Assigned {len(splitted_for_me)} cameras to Raspberry Pi {self.raspberry_id}")
         return splitted_for_me
 
     def run_spider_get_images(self, camera_ids):
@@ -158,9 +154,7 @@ class ContinuousWorkflow:
 
         """
         try:
-            logger.info(
-                f"📸 Running spider_get_images with {len(camera_ids)} cameras..."
-            )
+            logger.info(f"📸 Running spider_get_images with {len(camera_ids)} cameras...")
             cmd = ["scrapy", "crawl", "spider_get_images"]
             cmd.extend(["-a", f"n_raspberry={self.n_raspberry}"])
             cmd.extend(["-a", f"raspberry_id={self.raspberry_id}"])
@@ -180,9 +174,7 @@ class ContinuousWorkflow:
                 logger.info("✅ spider_get_images completed successfully")
                 return True
             else:
-                logger.error(
-                    f"❌ spider_get_images failed with code {result.returncode}"
-                )
+                logger.error(f"❌ spider_get_images failed with code {result.returncode}")
                 return False
 
         except Exception as e:
