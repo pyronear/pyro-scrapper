@@ -17,5 +17,3 @@ class PyronearItem(scrapy.Item):
     offline = scrapy.Field()
     screenshot = scrapy.Field()
     provider = scrapy.Field()
-    
-

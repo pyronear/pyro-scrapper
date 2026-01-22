@@ -1,6 +1,10 @@
+"""Utility functions for the AlertWest spiders."""
+
+
 from .config import (
     INTERESTING_PROPERTIES,
 )
+
 
 def extract_keys(data):
     """Extract short keys for cameras and locations from the API response."""

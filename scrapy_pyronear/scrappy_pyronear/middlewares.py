@@ -61,7 +61,7 @@ class PyronearSpiderMiddleware:
 
     def spider_opened(self, spider):
         """Log when spider is opened."""
-        spider.logger.info("Spider opened: %s" % spider.name)
+        spider.logger.info("Spider opened: %s", spider.name)
 
 
 class PyronearDownloaderMiddleware:
@@ -115,4 +115,4 @@ class PyronearDownloaderMiddleware:
 
     def spider_opened(self, spider):
         """Log when spider is opened."""
-        spider.logger.info("Spider opened: %s" % spider.name)
+        spider.logger.info("Spider opened: %s", spider.name)

@@ -223,12 +223,12 @@ def run_inference_pipeline(
 
     """
     log = logger or logging.getLogger(__name__)
-    
+
     if not images_dir.exists():
         log.warning(f"Images directory not found: {images_dir}")
         return 0
 
-    log.info(f"🔥 Initializing pyroengine for inference...")
+    log.info("🔥 Initializing pyroengine for inference...")
     try:
         engine = Engine()
         log.info(f"✅ Engine loaded with confidence threshold: {conf_thresh}")
@@ -284,7 +284,7 @@ def run_inference_pipeline(
     log.info(f"   Folders with fire detections: {total_detections}")
     log.info(f"   Results saved to: {output_dir}")
     log.info(f"{'=' * 70}")
-    
+
     return total_detections
 
 
@@ -310,7 +310,7 @@ def main(
     """
     root = Path(images_dir) if images_dir else images_root_from_this_file()
     output_path = Path(output_dir) if output_dir else root.parent / "annotations"
-    
+
     try:
         run_inference_pipeline(
             images_dir=root,

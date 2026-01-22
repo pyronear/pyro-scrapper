@@ -11,21 +11,22 @@ Usage:
 import argparse
 import json
 import logging
+import shutil
 import signal
 import subprocess
 import sys
 import time
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
+
 from astral import LocationInfo
 from astral.sun import sun
-import shutil
 
 from scrapy_pyronear.config import (
+    CACHE_DIR,
     INTERVAL,
     N_RASPBERRY,
     RASPBERRY_ID,
-    CACHE_DIR,
 )
 from scrapy_pyronear.plug_to_pyroengine import (
     run_inference_pipeline,
@@ -53,6 +54,7 @@ class ContinuousWorkflow:
         Args:
             force_get_scrapping_ids (bool): Force re-scraping of camera IDs
             scrapy_settings (dict): Scrapy settings to override
+
         """
         self.interval = INTERVAL
         self.n_raspberry = N_RASPBERRY
@@ -130,6 +132,7 @@ class ContinuousWorkflow:
 
         Returns:
             list: Subset of camera IDs for this Raspberry Pi
+
         """
         splitted_for_me = []
 
@@ -152,6 +155,7 @@ class ContinuousWorkflow:
 
         Args:
             camera_ids (list): List of camera IDs to scrape for this Raspberry Pi
+
         """
         try:
             logger.info(
@@ -198,18 +202,18 @@ class ContinuousWorkflow:
 
     def run_inference(self):
         """Run inference on collected images during night hours.
-        
+
         This function executes the pyroengine inference pipeline on all collected
         images, detecting fire sequences and saving results to the annotations directory.
         """
         logger.info("🌙 Starting inference phase...")
-        
+
         if not self.images_dir.exists():
             logger.warning(f"⚠️  No images directory found at {self.images_dir}")
             self.cleanup_images()
             self.inference_done = True
             return
-        
+
         try:
             # Run the inference pipeline
             total_detections = run_inference_pipeline(
@@ -220,11 +224,11 @@ class ContinuousWorkflow:
                 conf_thresh=0.15,
                 logger=logger,
             )
-            
+
             logger.info(f"✅ Inference phase completed - {total_detections} detection(s) found")
         except Exception as e:
             logger.error(f"❌ Error during inference: {e}", exc_info=True)
-        
+
         # Cleanup images after inference
         self.cleanup_images()
         self.inference_done = True
@@ -234,6 +238,7 @@ class ContinuousWorkflow:
 
         Args:
             camera_ids (list): List of camera IDs to scrape
+
         """
         logger.info(f"🚀 Start of scraping cycle #{self.scrape_count}")
 
@@ -243,7 +248,7 @@ class ContinuousWorkflow:
         elapsed_time = time.time() - cycle_start
 
         logger.info(f"✅ Cycle #{self.scrape_count} finished in {elapsed_time:.2f} seconds")
-        
+
         # Calculate wait time
         elapsed = time.time() - cycle_start
         wait_time = max(0, 30 - elapsed)
@@ -282,7 +287,7 @@ class ContinuousWorkflow:
                     self.cleanup_images()
                     self.inference_done = False
                     self.cycle_count = 0
-                
+
                 # Check if good_ids.json exists
                 if not self.good_ids_path.exists() or self.force_get_scrapping_ids:
                     if self.force_get_scrapping_ids:
@@ -300,12 +305,12 @@ class ContinuousWorkflow:
 
                     if camera_ids:
                         assigned_ids = self.split_camera_ids(camera_ids)
-                        
+
                         # Run scraping cycles while it's still day
                         while self.running and not self.is_night():
                             self.run_scraping_cycle(assigned_ids)
                             self.cycle_count += 1
-                        
+
                         logger.info(f"🌅 Daytime scraping phase ended after {self.cycle_count} cycles")
                     else:
                         logger.warning("⚠️  No camera IDs found in good_ids.json")

@@ -1,3 +1,5 @@
+"""Configuration for the AlertWest spiders."""
+
 from pathlib import Path
 
 # List of interesting properties to extract from the AlertWest API response

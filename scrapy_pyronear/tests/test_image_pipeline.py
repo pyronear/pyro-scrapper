@@ -1,7 +1,7 @@
 import os
 import sys
-from datetime import datetime
 import tempfile
+from datetime import datetime
 
 import scrapy
 
@@ -9,7 +9,7 @@ import scrapy
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scrappy_pyronear.items import PyronearItem
-from scrappy_pyronear.pipelines import GetImagesPipeline, FilteredIdsPipeline
+from scrappy_pyronear.pipelines import FilteredIdsPipeline, GetImagesPipeline
 
 
 def test_get_media_requests_builds_request(monkeypatch):

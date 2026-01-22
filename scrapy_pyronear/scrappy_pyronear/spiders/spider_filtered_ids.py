@@ -1,23 +1,18 @@
 """Spider to fetch all the camera and their infromations available on alertwest.com."""
 
 import json
-from datetime import datetime
 
 import scrapy
 from scrappy_pyronear.items import PyronearItem
 
-from .spider_utils import (
-    extract_keys
-)
-
-from .config import (
-    API_URL
-)
+from .config import API_URL
+from .spider_utils import extract_keys
 
 # Execute the code
 # NORMAL : scrapy crawl alertwest
 # WITH DEBUG : scrapy crawl alertwest -s LOG_LEVEL=DEBUG
 # WITH RASPBERRY PARAMETERS : scrapy crawl alertwest -a n_raspberry=2 -a raspberry_id=0
+
 
 class FilteredIdsSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
@@ -29,11 +24,11 @@ class FilteredIdsSpider(scrapy.Spider):
         }
     }
     start_urls = [API_URL]
-    
+
     def __init__(self, *args, **kwargs):
+        """Initialize spider."""
         super().__init__(*args, **kwargs)
         self.total_cams = 0
-    
 
     def parse(self, response):
         """Parse the API response and yield PyronearItems."""
@@ -51,4 +46,3 @@ class FilteredIdsSpider(scrapy.Spider):
                 offline=cam.get(short_key_cams["camOffline"]),
                 provider=cam.get(short_key_cams["providerName"]),
             )
-        
