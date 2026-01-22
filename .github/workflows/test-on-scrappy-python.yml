@@ -30,6 +30,9 @@ jobs:
           
           # Installe les dépendances du projet actuel
           pip install -r ./scrapy_pyronear/requirements.txt
+          
+          # Install the package in editable mode
+          pip install -e .
 
       - name: Run tests
         run: pytest ./scrapy_pyronear/tests
