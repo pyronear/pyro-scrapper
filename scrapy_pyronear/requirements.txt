@@ -5,4 +5,4 @@ tqdm
 ruff
 astral==3.2
 timezonefinder==8.2.0
-git+https://github.com/pyronear/pyro-engine.git
+git+https://github.com/pyronear/pyro-engine.git@main#egg=pyro-engine
