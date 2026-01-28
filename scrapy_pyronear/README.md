@@ -48,7 +48,7 @@ pip install -e .
 Then in the same virtual environment, install the requirements of scrapy_pyronear 
 
 ```bash
-cd ./pyro-scrapper/scrapy_pyronear
+cd ./pyro-scrapper
 pip install -r requirements.txt
 ```
 
