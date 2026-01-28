@@ -24,6 +24,7 @@ A production-ready Scrapy pipeline for automated camera image scraping and wildf
 
 2. **Start the continuous workflow**:
    ```bash
+   cd ./pyro-scrapper
    python -m alertwest_scraping.continuous_workflow
    ```
 
@@ -48,7 +49,7 @@ pip install -e .
 Then in the same virtual environment, install the requirements of alertwest_scraping 
 
 ```bash
-cd ./pyro-scrapper
+cd ./pyro-scrapper/alertwest_scraping
 pip install -r requirements.txt
 ```
 
