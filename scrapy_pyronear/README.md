@@ -6,32 +6,16 @@ A production-ready Scrapy pipeline for automated camera image scraping and wildf
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [Installation](#installation)
-3. [Configuration](#configuration)
-4. [Usage](#usage)
-5. [Architecture](#architecture)
-6. [Scraping Details](#scraping-details)
-7. [Inference Details](#inference-details)
+1. [Running](#running)
+2. [Configuration](#configuration)
+3. [Usage](#usage)
+4. [Architecture](#architecture)
+5. [Scraping Details](#scraping-details)
+6. [Inference Details](#inference-details)
 
 ---
 
-## Quick Start
-
-### Prerequisites
-
-- Python 3.12.0
-- Conda or pip
-
-### Installation
-
-```bash
-conda create --name pyronear python=3.12
-conda activate pyronear
-pip install -r requirements.txt
-```
-
-### First Run
+### Running
 
 1. **Configure your Raspberry Pi ID** in `config.py`:
    ```python
@@ -53,17 +37,19 @@ That's it! The workflow automatically:
 
 ## Installation
 
-```bash
-conda create --name pyronear python=3.12
-conda activate pyronear
-pip install -r requirements.txt
-```
+First you need to git clone the repository of pyro-engine in a same folder than the repositery where scrapy_pyronear is, link : https://github.com/pyronear/pyro-engine
 
-For wildfire detection (pyroengine), also install:
+Then in a virtual environment you will need to install the requirement of pyro-engine and install it as an executable
 ```bash
-cd ../../pyro-engine
+cd ./pyro-engine
 pip install -r requirements.txt
 pip install -e .
+```
+Then in the same virtual environment, install the requirements of scrapy_pyronear 
+
+```bash
+cd ./pyro-scrapper/scrapy_pyronear
+pip install -r requirements.txt
 ```
 
 ---
@@ -79,8 +65,7 @@ This file controls the overall workflow behavior. **Modify `RASPBERRY_ID` on eac
 | `INTERVAL` | 60s | Wait time between scraping cycles during the day |
 | `N_RASPBERRY` | 2 | Total number of Raspberry Pi devices in your network |
 | `RASPBERRY_ID` | 0 | **ID of this Raspberry Pi (0 to N_RASPBERRY-1)** - Change per device |
-| `LAUNCH_WITH_CLEANING` | True | Enable filtering of low-quality cameras |
-| `CACHE_DIR` | `data/alertwest_cache` | Directory for cached JSON files |
+| `CACHE_DIR` | `data/alertwest_cache` | Directory for cached JSON files of IDs for each Raspberry Pi |
 
 **⚠️ Important**: On each Raspberry Pi, update `RASPBERRY_ID`:
 - Raspberry Pi 1: `RASPBERRY_ID = 0`
@@ -108,6 +93,7 @@ Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
 | `CONCURRENT_ITEMS` | 400 | Parallel items in pipeline |
 | `DOWNLOAD_TIMEOUT` | 2s | Max wait for image download |
 | `RETRY_ENABLED` | False | Disable retries for speed |
+| ...
 
 ---
 
@@ -121,7 +107,7 @@ python -m scrapy_pyronear.continuous_workflow
 
 The workflow cycles automatically:
 - **Day**: Fetches camera IDs → Scrapes images in cycles
-- **Night**: Runs wildfire detection on collected images
+- **Night**: Runs wildfire detection on collected images and purges the images of the previous day
 
 ### Command-Line Options
 
@@ -139,7 +125,7 @@ python -m scrapy_pyronear.continuous_workflow -s CONCURRENT_REQUESTS=128 -s CONC
 
 #### Force Re-filtering Camera IDs
 
-Normally, `good_ids.json` is fetched once per day. Force a refresh:
+Normally, `good_ids.json` once fetched for the first time is cached. Force a refresh:
 ```bash
 python -m scrapy_pyronear.continuous_workflow --force-scrape
 ```
@@ -157,16 +143,6 @@ python -m scrapy_pyronear.continuous_workflow --force-scrape -s DOWNLOAD_TIMEOUT
 Fetch and filter all camera IDs once:
 ```bash
 scrapy crawl spider_filtered_ids
-```
-
-Scrape images for specific cameras (requires `good_ids.json`):
-```bash
-scrapy crawl spider_get_images -a camera_ids='[1987, 15871, 1939]'
-```
-
-Export metadata as JSON:
-```bash
-scrapy crawl spider_filtered_ids -o cameras.json
 ```
 
 Debug mode (verbose logs):
@@ -188,7 +164,7 @@ The continuous workflow orchestrates a 24-hour cycle combining camera scraping a
 
 2. **Nighttime (e.g., 9 PM - 6 AM)**:
    - **Wildfire Detection**: Analyze collected images for wildfire detection using the pyroengine model.
-   - **Cleanup**: Remove images older than 2 days to save space.
+   - **Cleanup**: Remove old images.
 
 ### Components
 
@@ -274,35 +250,6 @@ RETRY_ENABLED = False
 LOG_FORMATTER = "scrappy_pyronear.logformatter.SilentTimeoutLogFormatter"
 ```
 
-### Output example
-
-```
-Downloading images 🚀 : 100%|█████████████████████████████| 11702/11702 images
-
-URL retrieved but camera is down for 1524 cameras among 11702 total cameras.
-Miss a parameter in the json to construct URL for 999 cameras among 11702 total cameras.
-Timed out for 45 cameras among 11702 total cameras.
-Time taken: 2.53 minutes
-```
-
-### Helpers for troubleshooting
-
-#### Slow scraping
-
-Increase concurrency:
-```bash
-scrapy crawl alertwest -s CONCURRENT_REQUESTS=128 CONCURRENT_ITEMS=500
-```
-
-#### Too many timeouts
-
-Increase the timeout:
-```bash
-scrapy crawl alertwest -s DOWNLOAD_TIMEOUT=10
-```
-
----
-
 ## Inference Details
 
 ### Wildfire Detection with pyro-engine
@@ -311,7 +258,7 @@ The `plug_to_pyroengine.py` script enables automated wildfire detection on scrap
 
 #### How it works
 
-1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images (default: 6) where timestamps are separated by at most a specified gap (default: 60 seconds).
+1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images (default: 6) where timestamps are separated by at most a specified gap (default: 120 seconds).
 
 2. **Detection**: Each valid sequence is processed folder-by-folder through pyroengine's wildfire detection model.
 
@@ -319,11 +266,11 @@ The `plug_to_pyroengine.py` script enables automated wildfire detection on scrap
 
 #### Usage
 
-First, ensure you're in the `pyronear` conda environment with pyroengine installed:
+First, ensure you're in an environment with pyroengine installed:
 
 ```bash
 conda activate pyronear
-python plug_to_pyroengine.py --n 6 --max-gap 60 --conf-thresh 0.15
+python plug_to_pyroengine.py --n 6 --max-gap 90 --conf-thresh 0.15
 ```
 
 #### Options
@@ -346,7 +293,6 @@ python plug_to_pyroengine.py --n 8 --max-gap 30 --conf-thresh 0.20 --output-dir 
 Before running wildfire detection, install pyroengine and its dependencies:
 
 ```bash
-conda activate pyronear
 cd ../../pyro-engine
 pip install -r requirements.txt
 pip install -e .
