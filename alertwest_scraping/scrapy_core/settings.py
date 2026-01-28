@@ -57,9 +57,7 @@ AUTOTHROTTLE_ENABLED = False
 
 # Download timeout (seconds)
 DOWNLOAD_TIMEOUT = 2
-LOG_FORMATTER = (
-    "scrapy_core.logformatter.SilentTimeoutLogFormatter"  # Custom log formatter to silence timeout errors
-)
+LOG_FORMATTER = "scrapy_core.logformatter.SilentTimeoutLogFormatter"  # Custom log formatter to silence timeout errors
 
 # Disable retries to avoid waiting time on servers that don't respond
 RETRY_ENABLED = False
