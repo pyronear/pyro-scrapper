@@ -1,10 +1,10 @@
 import os
 import sys
 
-# Ensure project root is on sys.path so tests can import scrappy_pyronear
+# Ensure project root is on sys.path so tests can import scrapy_core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from scrappy_pyronear.spiders import spider_utils as utils
+from scrapy_core.spiders import spider_utils as utils
 
 
 def test_extract_keys_maps_shortcuts(monkeypatch):

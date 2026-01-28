@@ -11,8 +11,8 @@ Filename convention expected from the pipeline:
 Example:
     CAM1_20250101_120000_123456.jpg
 
-Usage (from repo root or the scrapy_pyronear folder):
-    python scrapy_pyronear/plug_to_pyroengine.py --n 6 --max-gap 60
+Usage (from repo root or the alertwest_scraping folder):
+    python alertwest_scraping/plug_to_pyroengine.py --n 6 --max-gap 60
 
 You can later plug the resulting sequences to `pyroengine.Engine` for
 temporal inference.
@@ -47,8 +47,8 @@ class ImageEntry:
 def images_root_from_this_file() -> Path:
     """Return the root images directory produced by scrapy.
 
-    Assumes this file lives in `pyro-scrapper/scrapy_pyronear/` and images are
-    in `pyro-scrapper/scrapy_pyronear/images/`.
+    Assumes this file lives in `pyro-scrapper/alertwest_scraping/` and images are
+    in `pyro-scrapper/alertwest_scraping/images/`.
     """
     here = Path(__file__).parent
     return here / "images"

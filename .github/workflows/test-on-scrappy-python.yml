@@ -29,10 +29,10 @@ jobs:
           pip install -e /tmp/pyro-engine
           
           # Installe les dépendances du projet actuel
-          pip install -r ./scrapy_pyronear/requirements.txt
+          pip install -r ./alertwest_scraping/requirements.txt
           
           # Install the package in editable mode
           pip install -e .
 
       - name: Run tests
-        run: pytest ./scrapy_pyronear/tests
+        run: pytest ./alertwest_scraping/tests

@@ -24,7 +24,8 @@ A production-ready Scrapy pipeline for automated camera image scraping and wildf
 
 2. **Start the continuous workflow**:
    ```bash
-   python -m scrapy_pyronear.continuous_workflow
+   cd ./pyro-scrapper
+   python -m alertwest_scraping.continuous_workflow
    ```
 
 That's it! The workflow automatically:
@@ -37,7 +38,7 @@ That's it! The workflow automatically:
 
 ## Installation
 
-First you need to git clone the repository of pyro-engine in a same folder than the repositery where scrapy_pyronear is, link : https://github.com/pyronear/pyro-engine
+First you need to git clone the repository of pyro-engine in a same folder than the repositery where alertwest_scraping is, link : https://github.com/pyronear/pyro-engine
 
 Then in a virtual environment you will need to install the requirement of pyro-engine and install it as an executable
 ```bash
@@ -45,10 +46,10 @@ cd ./pyro-engine
 pip install -r requirements.txt
 pip install -e .
 ```
-Then in the same virtual environment, install the requirements of scrapy_pyronear 
+Then in the same virtual environment, install the requirements of alertwest_scraping 
 
 ```bash
-cd ./pyro-scrapper/scrapy_pyronear
+cd ./pyro-scrapper/alertwest_scraping
 pip install -r requirements.txt
 ```
 
@@ -72,7 +73,7 @@ This file controls the overall workflow behavior. **Modify `RASPBERRY_ID` on eac
 - Raspberry Pi 2: `RASPBERRY_ID = 1`
 - etc.
 
-### `scrappy_pyronear/spiders/config.py` - Spider Configuration
+### `scrapy_core/spiders/config.py` - Spider Configuration
 
 Controls what data is fetched from the AlertWest API and where to cache it.
 
@@ -82,7 +83,7 @@ Controls what data is fetched from the AlertWest API and where to cache it.
 | `API_URL` | AlertWest API | Endpoint for camera metadata |
 | `CACHE_DIR` | `data/alertwest_cache` | Cache directory for API responses |
 
-### `scrappy_pyronear/settings.py` - Scrapy Settings
+### `scrapy_core/settings.py` - Scrapy Settings
 
 Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
 
@@ -102,7 +103,7 @@ Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
 ### Standard Continuous Workflow
 
 ```bash
-python -m scrapy_pyronear.continuous_workflow
+python -m alertwest_scraping.continuous_workflow
 ```
 
 The workflow cycles automatically:
@@ -115,19 +116,19 @@ The workflow cycles automatically:
 
 Increase timeout for slow networks:
 ```bash
-python -m scrapy_pyronear.continuous_workflow -s DOWNLOAD_TIMEOUT=5
+python -m alertwest_scraping.continuous_workflow -s DOWNLOAD_TIMEOUT=5
 ```
 
 Increase concurrency for faster scraping:
 ```bash
-python -m scrapy_pyronear.continuous_workflow -s CONCURRENT_REQUESTS=128 -s CONCURRENT_ITEMS=500
+python -m alertwest_scraping.continuous_workflow -s CONCURRENT_REQUESTS=128 -s CONCURRENT_ITEMS=500
 ```
 
 #### Force Re-filtering Camera IDs
 
 Normally, `good_ids.json` once fetched for the first time is cached. Force a refresh:
 ```bash
-python -m scrapy_pyronear.continuous_workflow --force-scrape
+python -m alertwest_scraping.continuous_workflow --force-scrape
 ```
 
 This is useful after the API changes or if you want to update the camera filter criteria.
@@ -135,7 +136,7 @@ This is useful after the API changes or if you want to update the camera filter 
 #### Combined Example
 
 ```bash
-python -m scrapy_pyronear.continuous_workflow --force-scrape -s DOWNLOAD_TIMEOUT=5 -s CONCURRENT_REQUESTS=128
+python -m alertwest_scraping.continuous_workflow --force-scrape -s DOWNLOAD_TIMEOUT=5 -s CONCURRENT_REQUESTS=128
 ```
 
 ### Single Spider Runs (Advanced)
@@ -147,7 +148,7 @@ scrapy crawl spider_filtered_ids
 
 Debug mode (verbose logs):
 ```bash
-python -m scrapy_pyronear.continuous_workflow -s LOG_LEVEL=DEBUG
+python -m alertwest_scraping.continuous_workflow -s LOG_LEVEL=DEBUG
 ```
 
 ---
@@ -247,7 +248,7 @@ CONCURRENT_REQUESTS = 64
 CONCURRENT_ITEMS = 400
 DOWNLOAD_TIMEOUT = 2
 RETRY_ENABLED = False
-LOG_FORMATTER = "scrappy_pyronear.logformatter.SilentTimeoutLogFormatter"
+LOG_FORMATTER = "scrapy_core.logformatter.SilentTimeoutLogFormatter"
 ```
 
 ## Inference Details
@@ -303,7 +304,7 @@ pip install -e .
 
 ## Mécanisme de scraping (détail technique)
 
-1. Le spider `scrappy_pyronear/spiders/alertwest_spider.py` :
+1. Le spider `scrapy_core/spiders/alertwest_spider.py` :
      - Envoie une requête HTTP GET vers `API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"`.
      - Parse le corps JSON de la réponse et récupère deux objets principaux :
          - `key_list` : mapping des clés courtes vers les noms de propriétés (utilisé pour retrouver les champs dynamiques renvoyés par l'API).
@@ -315,10 +316,10 @@ pip install -e .
              `https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{YYYY/MM/DD}/{img_name}` (la date utilisée est la date courante).
          - Crée un `PyronearItem` avec les champs remplis et le `image_url` construit, puis `yield item`.
 
-2. Items (`scrappy_pyronear/items.py`) :
+2. Items (`scrapy_core/items.py`) :
      - `PyronearItem` est un conteneur Scrapy standard définissant les champs attendus. Le pipeline et le spider s'appuient dessus pour transporter métadonnées + URL.
 
-3. Pipeline `AlertwestImagePipeline` (`scrappy_pyronear/pipelines.py`) :
+3. Pipeline `AlertwestImagePipeline` (`scrapy_core/pipelines.py`) :
      - Hérite de `scrapy.pipelines.images.ImagesPipeline`.
      - Méthodes principales :
          - `open_spider(self, spider)` : initialise timers, compteurs et la barre de progression `tqdm`. Récupère `spider.total_cams` pour fixer la taille de la barre.
@@ -329,7 +330,7 @@ pip install -e .
          - `file_path(self, request, response=None, info=None, item=None)` : construit le chemin local de sauvegarde pour chaque image. Format : ``{cam_id}/{azimuth}/{cam_id}_{scraping_timestamp}.jpg`` (azimuth vaut `unknown` si absent).
          - `close_spider(self, spider)` : affiche un résumé (nombre d'échecs, d'URLs manquantes, temps écoulé) et ferme la barre de progression.
 
-4. Réglages clés (`scrappy_pyronear/settings.py`) :
+4. Réglages clés (`scrapy_core/settings.py`) :
      - `FEEDS` : configuration pour exporter les métadonnées en JSON (`alertwest.json`).
      - Concurrence élevée pour maximiser le throughput : `CONCURRENT_REQUESTS = 64`, `CONCURRENT_REQUESTS_PER_DOMAIN = 32`, `CONCURRENT_ITEMS = 400`.
      - Timeout réduit pour favoriser la vitesse : `DOWNLOAD_TIMEOUT = 2` (modifiable via la ligne de commande `-s DOWNLOAD_TIMEOUT=3`).

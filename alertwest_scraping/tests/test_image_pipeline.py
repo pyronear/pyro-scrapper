@@ -5,11 +5,11 @@ from datetime import datetime
 
 import scrapy
 
-# Ensure project root is on sys.path so tests can import scrappy_pyronear
+# Ensure project root is on sys.path so tests can import scrapy_core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from scrappy_pyronear.items import PyronearItem
-from scrappy_pyronear.pipelines import FilteredIdsPipeline, GetImagesPipeline
+from scrapy_core.items import PyronearItem
+from scrapy_core.pipelines import FilteredIdsPipeline, GetImagesPipeline
 
 
 def test_get_media_requests_builds_request(monkeypatch):
@@ -31,7 +31,7 @@ def test_get_media_requests_builds_request(monkeypatch):
         info = type("Info", (), {"spider": spider})()
 
         pipeline.open_spider(spider)
-        monkeypatch.setattr("scrappy_pyronear.pipelines.datetime", FrozenDateTime)
+        monkeypatch.setattr("scrapy_core.pipelines.datetime", FrozenDateTime)
 
         item = PyronearItem(id="CAM001", azimuth=90, screenshot="img.jpg")
         requests = list(pipeline.get_media_requests(item, info=info))
