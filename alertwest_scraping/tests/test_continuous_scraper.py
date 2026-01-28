@@ -4,10 +4,10 @@ import sys
 
 import pytest
 
-# Ensure project root is on sys.path so tests can import scrappy_pyronear
+# Ensure project root is on sys.path so tests can import scrapy_core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from scrapy_pyronear.continuous_workflow import ContinuousWorkflow
+from alertwest_scraping.continuous_workflow import ContinuousWorkflow
 
 
 def test_run_inference_cleans_images(monkeypatch, tmp_path):
@@ -23,7 +23,7 @@ def test_run_inference_cleans_images(monkeypatch, tmp_path):
 
     called = {"inference": False}
     monkeypatch.setattr(
-        "scrapy_pyronear.continuous_workflow.run_inference_pipeline",
+        "alertwest_scraping.continuous_workflow.run_inference_pipeline",
         lambda **kwargs: called.__setitem__("inference", True) or 0,
     )
 
@@ -39,7 +39,7 @@ def test_split_camera_ids_even_distribution(monkeypatch, tmp_path):
     Camera IDs must be evenly partitioned and persisted for each Raspberry Pi.
     """
 
-    monkeypatch.setattr("scrapy_pyronear.continuous_workflow.CACHE_DIR", tmp_path)
+    monkeypatch.setattr("alertwest_scraping.continuous_workflow.CACHE_DIR", tmp_path)
 
     wf = ContinuousWorkflow()
     wf.n_raspberry = 3
@@ -65,7 +65,7 @@ def test_run_handles_night_then_day(monkeypatch, tmp_path):
     The workflow should run inference at night, clean images at day start, split IDs, then scrape once.
     """
 
-    monkeypatch.setattr("scrapy_pyronear.continuous_workflow.CACHE_DIR", tmp_path)
+    monkeypatch.setattr("alertwest_scraping.continuous_workflow.CACHE_DIR", tmp_path)
 
     wf = ContinuousWorkflow(force_get_scrapping_ids=True)
     wf.images_dir = tmp_path / "images"

@@ -4,12 +4,12 @@ import sys
 
 from scrapy.http import TextResponse
 
-# Ensure project root is on sys.path so tests can import scrappy_pyronear
+# Ensure project root is on sys.path so tests can import scrapy_core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from scrappy_pyronear.items import PyronearItem
-from scrappy_pyronear.spiders.spider_filtered_ids import FilteredIdsSpider
-from scrappy_pyronear.spiders.spider_get_images import GetImagesSpider
+from scrapy_core.items import PyronearItem
+from scrapy_core.spiders.spider_filtered_ids import FilteredIdsSpider
+from scrapy_core.spiders.spider_get_images import GetImagesSpider
 
 
 sample_json = {

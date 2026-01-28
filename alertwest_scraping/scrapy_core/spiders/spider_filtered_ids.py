@@ -3,7 +3,7 @@
 import json
 
 import scrapy
-from scrappy_pyronear.items import PyronearItem
+from scrapy_core.items import PyronearItem
 
 from .config import API_URL
 from .spider_utils import extract_keys
@@ -18,7 +18,7 @@ class FilteredIdsSpider(scrapy.Spider):
     """Spider to scrape camera data from AlertWest API."""
 
     name = "spider_filtered_ids"
-    custom_settings = {"ITEM_PIPELINES": {"scrappy_pyronear.pipelines.FilteredIdsPipeline": 300}}
+    custom_settings = {"ITEM_PIPELINES": {"scrapy_core.pipelines.FilteredIdsPipeline": 300}}
     start_urls = [API_URL]
 
     def __init__(self, *args, **kwargs):

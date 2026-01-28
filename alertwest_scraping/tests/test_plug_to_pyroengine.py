@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 
-# Ensure project root is on sys.path so tests can import scrappy_pyronear
+# Ensure project root is on sys.path so tests can import scrapy_core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
@@ -25,7 +25,7 @@ def import_with_fake_engine(monkeypatch):
 
     import importlib
 
-    return importlib.import_module("scrapy_pyronear.plug_to_pyroengine")
+    return importlib.import_module("alertwest_scraping.plug_to_pyroengine")
 
 
 def test_parse_timestamp_from_filename(monkeypatch):

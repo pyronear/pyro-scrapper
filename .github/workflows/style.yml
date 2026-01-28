@@ -35,8 +35,8 @@ jobs:
       - name: Run ruff
         run: |
           ruff --version
-          ruff format --check --diff scrapy_pyronear
-          ruff check --diff scrapy_pyronear
+          ruff format --check --diff alertwest_scraping
+          ruff check --diff alertwest_scraping
 
   mypy:
     runs-on: ubuntu-latest

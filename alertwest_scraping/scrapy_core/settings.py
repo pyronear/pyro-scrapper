@@ -11,8 +11,8 @@
 
 BOT_NAME = "scrapping_pyronear"
 
-SPIDER_MODULES = ["scrappy_pyronear.spiders"]
-NEWSPIDER_MODULE = "scrappy_pyronear.spiders"
+SPIDER_MODULES = ["scrapy_core.spiders"]
+NEWSPIDER_MODULE = "scrapy_core.spiders"
 
 # Définir les exports de données
 FEEDS = {}
@@ -58,7 +58,7 @@ AUTOTHROTTLE_ENABLED = False
 # Download timeout (seconds)
 DOWNLOAD_TIMEOUT = 2
 LOG_FORMATTER = (
-    "scrappy_pyronear.logformatter.SilentTimeoutLogFormatter"  # Custom log formatter to silence timeout errors
+    "scrapy_core.logformatter.SilentTimeoutLogFormatter"  # Custom log formatter to silence timeout errors
 )
 
 # Disable retries to avoid waiting time on servers that don't respond
@@ -129,7 +129,7 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 # Article pipeline order and priority. 0 means high priority, 1000 means low priority.
 ITEM_PIPELINES = {
-    "scrappy_pyronear.pipelines.AlertwestImagePipeline": 300,
+    "scrapy_core.pipelines.AlertwestImagePipeline": 300,
 }
 
 IMAGES_STORE = "images"
