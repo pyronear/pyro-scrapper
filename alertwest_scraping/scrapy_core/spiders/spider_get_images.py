@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import scrapy
-from scrappy_pyronear.items import PyronearItem
+from scrapy_core.items import PyronearItem
 
 from .config import API_URL
 from .spider_utils import extract_keys
@@ -14,7 +14,7 @@ class GetImagesSpider(scrapy.Spider):
     """Spider to download camera images from provided camera IDs."""
 
     name = "spider_get_images"
-    custom_settings = {"ITEM_PIPELINES": {"scrappy_pyronear.pipelines.GetImagesPipeline": 300}}
+    custom_settings = {"ITEM_PIPELINES": {"scrapy_core.pipelines.GetImagesPipeline": 300}}
     start_urls = [API_URL]
 
     def __init__(self, *args, **kwargs):

@@ -5,7 +5,7 @@ This script manages a 24-hour workflow:
 - Day: Scrape camera images with Raspberry Pi load balancing
 
 Usage:
-    python -m scrapy_pyronear.continuous_workflow [-s SETTING=VALUE]
+    python -m alertwest_scraping.continuous_workflow [-s SETTING=VALUE]
 """
 
 import argparse
@@ -22,13 +22,13 @@ from pathlib import Path
 from astral import LocationInfo
 from astral.sun import sun
 
-from scrapy_pyronear.config import (
+from alertwest_scraping.config import (
     CACHE_DIR,
     INTERVAL,
     N_RASPBERRY,
     RASPBERRY_ID,
 )
-from scrapy_pyronear.plug_to_pyroengine import (
+from alertwest_scraping.plug_to_pyroengine import (
     run_inference_pipeline,
 )
 
