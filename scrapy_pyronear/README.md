@@ -335,3 +335,12 @@ pip install -e .
      - Timeout réduit pour favoriser la vitesse : `DOWNLOAD_TIMEOUT = 2` (modifiable via la ligne de commande `-s DOWNLOAD_TIMEOUT=3`).
      - `LOG_FORMATTER` personnalisé pour cacher les logs de timeout.
      - `RETRY_ENABLED = False` pour ne pas retenter les requêtes longues.
+
+---
+
+## Next steps / TO DO
+
+- Connexion à l'API d'annotation à faire plus proprement. Actuellement les images retournées positives sont copiées dans un dossier `annotations/` → créer un code d'ingestion de ce dossier par l'API d'annotation.
+- Intégrer la dépendance de pyro-engine directement dans les requirements du projet pyro-scrapper afin qu'une unique commande `pip install -r requirements.txt` suffise.
+- Vérifier la fréquence de scrapping afin que toutes les images prises en une journée soient possiblement inférées en une nuit.
+- Utiliser la librairie CodeCarbon afin de quantifier l'impact de notre code.
