@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, List, Optional
-from alertwest_scraping.config import (INTERVAL)
+from alertwest_scraping.config import INTERVAL
 
 from PIL import Image
 from pyroengine.core import Engine
@@ -336,7 +336,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-gap",
         type=int,
-        default=INTERVAL*1.5,
+        default=INTERVAL * 1.5,
         help="Maximum allowed gap in seconds between consecutive images",
     )
     parser.add_argument(
