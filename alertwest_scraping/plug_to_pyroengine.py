@@ -13,9 +13,7 @@ Example:
 
 Usage (from repo root or the alertwest_scraping folder):
     python alertwest_scraping/plug_to_pyroengine.py --n 6 --max-gap 60
-
-You can later plug the resulting sequences to `pyroengine.Engine` for
-temporal inference.
+Make sure max-gap is set according to the frequency time of scraping (e.g., not less than 60 seconds if images are scraped every minute) to find valid sequences.
 
 """
 
@@ -29,6 +27,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, List, Optional
+from alertwest_scraping.config import (INTERVAL)
 
 from PIL import Image
 from pyroengine.core import Engine
@@ -337,7 +336,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-gap",
         type=int,
-        default=120,
+        default=INTERVAL*1.5,
         help="Maximum allowed gap in seconds between consecutive images",
     )
     parser.add_argument(
