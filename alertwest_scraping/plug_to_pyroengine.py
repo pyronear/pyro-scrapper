@@ -13,8 +13,9 @@ Example:
 
 Usage (from repo root or the alertwest_scraping folder):
     python alertwest_scraping/plug_to_pyroengine.py --n 6 --max-gap 60
-Make sure max-gap is set according to the frequency time of scraping (e.g., not less than 60 seconds if images are scraped every minute) to find valid sequences.
-
+Make sure max-gap is set according to the frequency time of scraping 
+(e.g., not less than 60 seconds if images are scraped every minute) 
+to find valid sequences.
 """
 
 from __future__ import annotations
