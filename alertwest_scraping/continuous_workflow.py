@@ -25,11 +25,11 @@ from astral.sun import sun
 from alertwest_scraping.config import (
     CACHE_DIR,
     INTERVAL,
-    N_RASPBERRY,
-    RASPBERRY_ID,
-    N_CONSECUTIVE,
     MAX_GAP_SECONDS,
     MIN_DETECTIONS,
+    N_CONSECUTIVE,
+    N_RASPBERRY,
+    RASPBERRY_ID,
 )
 from alertwest_scraping.orchestration_inference_send_annotation_api import (
     run_inference_pipeline,

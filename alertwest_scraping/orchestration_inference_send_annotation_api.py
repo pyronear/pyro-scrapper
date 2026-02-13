@@ -36,6 +36,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from pyroengine.core import Engine
 
+from alertwest_scraping.config import CONF_THRESH, INTERVAL, MIN_DETECTIONS
+from alertwest_scraping.inference import (
+    find_folder_lat_lon,
+    iter_leaf_folders,
+    run_inference_on_sequence,
+    scan_folder_for_sequences,
+)
 from alertwest_scraping.send_annotation_api import (
     ANNOTATION_ALERT_API_ID,
     find_folder_cam_id_and_name,
@@ -43,13 +50,7 @@ from alertwest_scraping.send_annotation_api import (
     import_sequence_via_annotation_api,
     parse_azimuth,
 )
-from alertwest_scraping.config import (INTERVAL, MIN_DETECTIONS, CONF_THRESH) 
-from alertwest_scraping.inference import (
-    find_folder_lat_lon,
-    iter_leaf_folders,
-    run_inference_on_sequence,
-    scan_folder_for_sequences,
-)
+
 
 def images_root_from_this_file() -> Path:
     """Return the root images directory produced by scrapy.
@@ -153,7 +154,7 @@ def run_inference_pipeline(
 
             if has_detection:
                 # log.info(" 🔥 DETECTION!")
-                
+
                 alert_api_id = ANNOTATION_ALERT_API_ID
                 if alert_api_id is None:
                     alert_api_id = generate_alert_api_id(cam_id, azimuth, seq[0].ts)
