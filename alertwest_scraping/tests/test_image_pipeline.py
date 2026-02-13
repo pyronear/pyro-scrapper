@@ -5,8 +5,10 @@ from datetime import datetime
 
 import scrapy
 
-# Ensure project root is on sys.path so tests can import scrapy_core
+# Ensure package root is on sys.path so tests can import scrapy_core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Ensure repo root is on sys.path so tests can import alertwest_scraping
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from scrapy_core.items import PyronearItem
 from scrapy_core.pipelines import FilteredIdsPipeline, GetImagesPipeline
@@ -59,7 +61,11 @@ def test_file_path_handles_missing_azimuth():
     )
 
     path = pipeline.file_path(request, item=item)
-    assert path == os.path.join("CAM1", "unknown", "CAM1_20250101_120000_123456.jpg")
+    assert path == os.path.join(
+        "CAM1",
+        "unknown",
+        "CAM1_20250101_120000_123456_unknown_unknown_unknown.jpg",
+    )
 
 
 def test_filtered_ids_pipeline_writes_good_ids(tmp_path):

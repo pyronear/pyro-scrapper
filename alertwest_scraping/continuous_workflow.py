@@ -27,8 +27,11 @@ from alertwest_scraping.config import (
     INTERVAL,
     N_RASPBERRY,
     RASPBERRY_ID,
+    N_CONSECUTIVE,
+    MAX_GAP_SECONDS,
+    MIN_DETECTIONS,
 )
-from alertwest_scraping.plug_to_pyroengine import (
+from alertwest_scraping.orchestration_inference_send_annotation_api import (
     run_inference_pipeline,
 )
 
@@ -67,8 +70,9 @@ class ContinuousWorkflow:
         self.scrape_count = 0
         self.good_ids_path = Path(__file__).parent / "good_ids.json"
         self.images_dir = Path(__file__).parent / "images"
-        self.annotations_dir = Path(__file__).parent / "annotations"
-
+        self.n_consecutive = N_CONSECUTIVE
+        self.max_gap_seconds = MAX_GAP_SECONDS
+        self.min_detections = MIN_DETECTIONS
         # US Central location for sun calculations
         self.location = LocationInfo(
             name="US_Central",
@@ -77,15 +81,6 @@ class ContinuousWorkflow:
             latitude=39.8283,
             longitude=-98.5795,
         )
-        
-        # # New York location for sun calculations
-        # self.location = LocationInfo(
-        #     name="New_York",
-        #     region="USA",
-        #     timezone="America/New_York",
-        #     latitude=40.7128,
-        #     longitude=-74.0060,
-        # )
 
         # Handle signals for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -219,10 +214,9 @@ class ContinuousWorkflow:
             # Run the inference pipeline
             total_detections = run_inference_pipeline(
                 images_dir=self.images_dir,
-                output_dir=self.annotations_dir,
-                n_consecutive=6,
-                max_gap_seconds=120,
-                min_detections=6/2, # Adjusted for cumulative confidence over 6 images. (positive detection for half of it)
+                n_consecutive=self.n_consecutive,
+                max_gap_seconds=self.max_gap_seconds,
+                min_detections=self.min_detections,
                 logger=logger,
             )
 

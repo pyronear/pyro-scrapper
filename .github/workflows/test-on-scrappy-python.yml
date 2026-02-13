@@ -23,12 +23,16 @@ jobs:
 
       - name: Install dependencies
         run:  |
-          # Clone et installe pyro-engine dans /tmp
+          # Clone and install pyro-engine in /tmp
           git clone https://github.com/pyronear/pyro-engine.git /tmp/pyro-engine
           pip install -r /tmp/pyro-engine/requirements.txt
           pip install -e /tmp/pyro-engine
+
+          # Clone and install pyro-annotator annotation_api in /tmp
+          git clone https://github.com/pyronear/pyro-annotator.git /tmp/pyro-annotator
+          pip install -e /tmp/pyro-annotator/annotation_api
           
-          # Installe les dépendances du projet actuel
+          # Install current project dependencies
           pip install -r ./alertwest_scraping/requirements.txt
           
           # Install the package in editable mode

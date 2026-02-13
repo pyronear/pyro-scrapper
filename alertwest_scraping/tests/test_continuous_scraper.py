@@ -4,8 +4,8 @@ import sys
 
 import pytest
 
-# Ensure project root is on sys.path so tests can import scrapy_core
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Ensure repo root is on sys.path so tests can import alertwest_scraping
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from alertwest_scraping.continuous_workflow import ContinuousWorkflow
 

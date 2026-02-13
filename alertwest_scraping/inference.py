@@ -18,7 +18,6 @@ from typing import Dict, Iterable, List, Optional, Tuple
 from PIL import Image
 from pyroengine.core import Engine
 
-
 TIMESTAMP_FMT = "%Y%m%d_%H%M%S"
 
 
@@ -170,6 +169,7 @@ def iter_leaf_folders(root: Path) -> Iterable[Path]:
                 continue
             yield az_dir
 
+
 def run_inference_on_sequence(
     engine: Engine, sequence: List[ImageEntry], min_detections: int = 3
 ) -> tuple[bool, float, Dict[Path, List[Tuple[int, float, float, float, float]]]]:
@@ -189,18 +189,18 @@ def run_inference_on_sequence(
     engine._states["-1"]["last_predictions"].clear()
     engine._states["-1"]["ongoing"] = False
     engine._states["-1"]["anchor_bbox"] = None
-    
+
     raw_confidences = []  # Raw model confidences (last bbox confidence)
     labels_by_path: Dict[Path, List[Tuple[int, float, float, float, float]]] = {}
     detections_count = 0
-    
+
     for entry in sequence:
         try:
             img = Image.open(entry.path).convert("RGB")
             # Use model directly to get raw predictions without temporal aggregation
             _, bbox_mask_dict, _ = engine.occlusion_masks["-1"]
             preds = engine.model(img, bbox_mask_dict)  # Returns np.array with shape (N, 5): [x1, y1, x2, y2, conf]
-            
+
             # Get maximum confidence from all detected boxes
             max_conf = float(preds[:, 4].max()) if preds.size > 0 else 0.0
             raw_confidences.append(max_conf)
@@ -213,19 +213,19 @@ def run_inference_on_sequence(
                 cx, cy, w, h = yolo_box
                 labels.append((0, cx, cy, w, h))
             labels_by_path[entry.path] = labels
-            
+
             if max_conf > engine.conf_thresh:  # Count images with fire detected (conf > 0.15)
                 detections_count += 1
-                
+
             logging.info(f"    Image {entry.path.name}: max_conf={max_conf:.4f} (detected: {max_conf > engine.conf_thresh})")
         except Exception as e:
             print(f"  Error processing {entry.path.name}: {e}")
             continue
-    
+
     avg_conf = sum(raw_confidences) / len(raw_confidences) if raw_confidences else 0.0
     has_fire = detections_count >= min_detections
-    
+
     logging.info(f"  Detections: {detections_count}/{len(sequence)} images with fire (threshold: {min_detections})")
     logging.info(f"  Average confidence: {avg_conf:.4f}")
-    
+
     return has_fire, avg_conf, labels_by_path

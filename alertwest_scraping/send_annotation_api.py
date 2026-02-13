@@ -17,7 +17,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-
 ANNOTATION_API_BASE = "https://annotationapi.pyronear.org/"
 ANNOTATION_ALERT_API_ID = None  # None enables per-sequence generation
 ANNOTATION_ORG_ID = 1
@@ -36,7 +35,7 @@ def parse_cam_id_and_name_from_filename(name: str) -> Optional[str]:
         if len(parts) < 6:
             return None
         cam_id = parts[0]
-        cam_name = "_".join(parts[5:]).strip() 
+        cam_name = "_".join(parts[5:]).strip()
         return cam_id, cam_name or None
     except (ValueError, TypeError):
         return None
@@ -47,7 +46,6 @@ def find_folder_cam_id_and_name(folder: Path) -> Optional[str]:
     for image_path in folder.glob("*.jpg"):
         cam_id, cam_name = parse_cam_id_and_name_from_filename(image_path.name)
         return cam_id, cam_name
-    
 
 
 def parse_azimuth(value: str) -> Optional[int]:
@@ -72,6 +70,7 @@ def create_yolo_sequence_dir(
         output_dir: root output directory for sequences.
         cam_id: camera identifier string.
         azimuth: camera azimuth string.
+        labels_by_path: optional YOLO labels per image path.
 
     Returns:
         Path to the created sequence directory.
@@ -122,6 +121,7 @@ def generate_alert_api_id(cam_id: str, azimuth: str, recorded_at: datetime) -> i
 
 
 def normalize_base_url(base_url: str) -> str:
+    """Normalize annotation API base URL to remove a trailing /api/v1."""
     trimmed = base_url.rstrip("/")
     if trimmed.endswith("/api/v1"):
         return trimmed[: -len("/api/v1")]

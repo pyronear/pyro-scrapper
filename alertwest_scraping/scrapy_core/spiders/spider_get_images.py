@@ -36,14 +36,15 @@ class GetImagesSpider(scrapy.Spider):
         short_key_cams, short_key_locs = extract_keys(data)
         data_cams = data.get("data", {}).get("cams", {}).get("data", [])
         data_locs = data.get("data", {}).get("locs", {}).get("data", [])
-        
+
         # Construct a mapping of location_id to (lat, lon) for quick lookup
-        for cam in data_cams:
-            if cam.get(short_key_cams["camId"]) in self.camera_ids:
-                for loc in data_locs: 
-                    if loc.get(short_key_locs["locId"]) == cam.get(short_key_cams["camLocation"]): 
-                        locs_by_id = {loc.get(short_key_locs["locId"]): ( loc.get(short_key_locs["locLat"]), loc.get(short_key_locs["locLon"]) ) for loc in data_locs}
-            
+        locs_by_id = {
+            loc.get(short_key_locs.get("locId")): (
+                loc.get(short_key_locs.get("locLat")),
+                loc.get(short_key_locs.get("locLon")),
+            )
+            for loc in data_locs
+        }
 
         for cam in data_cams:
             # Process only cameras in the camera_ids list

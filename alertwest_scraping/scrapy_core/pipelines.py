@@ -219,13 +219,13 @@ class GetImagesPipeline(ImagesPipeline):
         """Determine the file path for saving downloaded images."""
         meta = request.meta
         cam_id = item.get("id")
-        cam_name = item.get("name")
+        cam_name = item.get("name") or "unknown"
 
         # If there is no azimuth, it is replaced by unknown
         azimuth = item.get("azimuth") or "unknown"
         scraped_at = meta.get("scraped_at") or "unknown"
-        lat = item.get("lat")
-        lon = item.get("lon")
+        lat = item.get("lat") if item.get("lat") is not None else "unknown"
+        lon = item.get("lon") if item.get("lon") is not None else "unknown"
 
         filename = f"{cam_id}_{scraped_at}_{lat}_{lon}_{cam_name}.jpg"
 

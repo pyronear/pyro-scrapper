@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 
 
-# Ensure project root is on sys.path so tests can import scrapy_core
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Ensure repo root is on sys.path so tests can import alertwest_scraping
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
-def import_with_fake_engine(monkeypatch):
-    """Load plug_to_pyroengine with a lightweight fake Engine to avoid heavy dependencies."""
+def import_inference_with_fake_engine(monkeypatch):
+    """Load inference with a lightweight fake Engine to avoid heavy dependencies."""
     fake_core = types.SimpleNamespace(
         Engine=type(
             "Engine",
@@ -25,11 +25,11 @@ def import_with_fake_engine(monkeypatch):
 
     import importlib
 
-    return importlib.import_module("alertwest_scraping.plug_to_pyroengine")
+    return importlib.import_module("alertwest_scraping.inference")
 
 
 def test_parse_timestamp_from_filename(monkeypatch):
-    mod = import_with_fake_engine(monkeypatch)
+    mod = import_inference_with_fake_engine(monkeypatch)
 
     ts = mod.parse_timestamp_from_filename("CAM1_20250101_120000_123456.jpg")
     assert isinstance(ts, datetime)
@@ -39,7 +39,7 @@ def test_parse_timestamp_from_filename(monkeypatch):
 
 
 def test_find_sequences_consecutive(monkeypatch):
-    mod = import_with_fake_engine(monkeypatch)
+    mod = import_inference_with_fake_engine(monkeypatch)
 
     base = datetime(2025, 1, 1, 12, 0, 0)
     entries = [
@@ -55,9 +55,23 @@ def test_find_sequences_consecutive(monkeypatch):
     # Gap too large removes sequence
     assert mod.find_sequences(entries, n=3, max_gap_seconds=5) == []
 
+    # Non-overlapping behavior
+    entries = [
+        mod.ImageEntry(Path("a.jpg"), base),
+        mod.ImageEntry(Path("b.jpg"), base.replace(second=10)),
+        mod.ImageEntry(Path("c.jpg"), base.replace(second=20)),
+        mod.ImageEntry(Path("d.jpg"), base.replace(second=30)),
+        mod.ImageEntry(Path("e.jpg"), base.replace(second=40)),
+        mod.ImageEntry(Path("f.jpg"), base.replace(second=50)),
+    ]
+    sequences = mod.find_sequences(entries, n=3, max_gap_seconds=15)
+    assert len(sequences) == 2
+    assert [e.path.name for e in sequences[0]] == ["a.jpg", "b.jpg", "c.jpg"]
+    assert [e.path.name for e in sequences[1]] == ["d.jpg", "e.jpg", "f.jpg"]
+
 
 def test_iter_leaf_folders(monkeypatch, tmp_path):
-    mod = import_with_fake_engine(monkeypatch)
+    mod = import_inference_with_fake_engine(monkeypatch)
 
     root = tmp_path / "images"
     (root / "CAM1" / "90").mkdir(parents=True)
