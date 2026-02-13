@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import shutil
 from pathlib import Path
 from typing import List, Optional
 
@@ -59,32 +58,6 @@ def images_root_from_this_file() -> Path:
     """
     here = Path(__file__).parent
     return here / "images"
-
-
-def handle_detection(folder: Path, sequence: List[ImageEntry], output_dir: Path) -> None:
-    """Copy or move the folder containing detected sequence to output directory.
-
-    Args:
-        folder: the folder containing the sequence images.
-        sequence: the sequence that triggered detection.
-        output_dir: destination directory for annotations.
-
-    """
-    output_dir.mkdir(parents=True, exist_ok=True)
-    # Copy entire folder structure: cam_id/azimuth/
-    cam_id = folder.parent.name
-    azimuth = folder.name
-    dest_folder = output_dir / cam_id / azimuth
-
-    if dest_folder.exists():
-        print(f"  Destination already exists: {dest_folder}")
-        return
-
-    try:
-        shutil.copytree(folder, dest_folder)
-        print(f"  ✓ Copied {folder} -> {dest_folder}")
-    except Exception as e:
-        print(f"  Error copying {folder}: {e}")
 
 
 def run_inference_pipeline(
@@ -138,7 +111,7 @@ def run_inference_pipeline(
     processed_folders = set()
 
     log.info(f"📸 Processing images from: {images_dir}")
-    log.info(f"💾 Detection output directory: {output_dir}")
+    log.info("💾 Local copies disabled: sending detections directly to API")
     log.info(f"🔍 Looking for sequences of {n_consecutive} images with max gap of {max_gap_seconds}s")
 
     for folder in iter_leaf_folders(images_dir):
@@ -184,7 +157,6 @@ def run_inference_pipeline(
                 log.info(" 🔥 DETECTION!")
                 # Only copy folder once even if multiple sequences detected
                 if folder not in processed_folders:
-                    handle_detection(folder, seq, output_dir)
                     processed_folders.add(folder)
                     total_detections += 1
 
@@ -195,21 +167,15 @@ def run_inference_pipeline(
                 if alert_api_id is None:
                     alert_api_id = generate_alert_api_id(cam_id, azimuth, seq[0].ts)
 
-                sequence_dir = create_yolo_sequence_dir(
-                    seq,
-                    output_dir,
-                    cam_id,
-                    azimuth,
-                    labels_by_path=labels_by_path,
-                )
                 import_sequence_via_annotation_api(
-                    sequence_dir,
+                    seq,
                     cam_id,
                     cam_name,
                     parse_azimuth(azimuth),
                     lat,
                     lon,
                     alert_api_id,
+                    labels_by_path,
                     log,
                 )
             else:
