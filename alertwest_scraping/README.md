@@ -255,15 +255,34 @@ LOG_FORMATTER = "scrapy_core.logformatter.SilentTimeoutLogFormatter"
 
 ### Wildfire Detection with pyro-engine
 
-The `plug_to_pyroengine.py` script enables automated wildfire detection on scraped camera images using temporal analysis.
+The `plug_to_pyroengine.py` pipeline enables automated wildfire detection on scraped camera images using temporal analysis and API submission.
 
 #### How it works
 
 1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images (default: 6) where timestamps are separated by at most a specified gap (default: 120 seconds).
 
-2. **Detection**: Each valid sequence is processed folder-by-folder through pyroengine's wildfire detection model.
+2. **Detection**: Each valid sequence is processed through the inference module (`inference.py`) which runs pyroengine's fire detection model on each image in the sequence.
 
-3. **Output**: Folders containing sequences with detected wildfires are copied to an `annotations/` directory for further review.
+3. **API Submission**: Sequences with detected wildfires are formatted as YOLO datasets and submitted to the pyro-annotator API via the annotation API integration module (`annotation_api.py`).
+
+#### Core Modules
+
+**`inference.py`** – Fire detection inference
+- Temporal sequence identification (`find_sequences()`, `scan_folder_for_sequences()`)
+- Timestamp and metadata extraction from filenames
+- Pyroengine model execution (`run_inference_on_sequence()`)
+- Per-folder latitude/longitude resolution (`find_folder_lat_lon()`)
+
+**`annotation_api.py`** – Annotation API integration
+- YOLO dataset format creation (`create_yolo_sequence_dir()`)
+- Unique sequence ID generation (`generate_alert_api_id()` - CRC32-based per-sequence)
+- Subprocess invocation of `import_yolo_sequence.py` for API ingestion
+- Credential and environment management
+
+**`plug_to_pyroengine.py`** – Pipeline orchestration
+- Main inference workflow (`run_inference_pipeline()`)
+- Detection handling and folder copying (`handle_detection()`)
+- CLI interface and argument parsing
 
 #### Usage
 
@@ -271,15 +290,15 @@ First, ensure you're in an environment with pyroengine installed:
 
 ```bash
 conda activate pyronear
-python plug_to_pyroengine.py --n 6 --max-gap 90 --conf-thresh 0.15
+python plug_to_pyroengine.py --n 6 --max-gap 90 --conf-thresh 0.01
 ```
 
 #### Options
 
 - `--images-dir`: Root images directory (defaults to `images/` next to the script)
 - `--n`: Required number of consecutive images in a sequence (default: 6)
-- `--max-gap`: Maximum allowed gap in seconds between consecutive images (default: 60)
-- `--conf-thresh`: Confidence threshold for wildfire detection (default: 0.15)
+- `--max-gap`: Maximum allowed gap in seconds between consecutive images (default: `INTERVAL * 1.5` from config)
+- `--conf-thresh`: Confidence threshold for wildfire detection (default: 0.01 / 1%)
 - `--output-dir`: Output directory for detected sequences (default: `annotations/` next to images)
 
 #### Example
@@ -288,6 +307,27 @@ python plug_to_pyroengine.py --n 6 --max-gap 90 --conf-thresh 0.15
 # Analyze sequences of 8 images with 30-second max gap and 0.20 confidence threshold
 python plug_to_pyroengine.py --n 8 --max-gap 30 --conf-thresh 0.20 --output-dir ./detections
 ```
+
+#### API Integration Details
+
+When a fire sequence is detected:
+
+1. **Unique ID Generation**: Each sequence receives a stable, collision-free ID via CRC32 hash of `{cam_id}:{azimuth}:{timestamp}`. This allows safe re-ingestion without API conflicts.
+
+2. **YOLO Format**: Images are copied to a standardized directory structure:
+   ```
+   annotations/
+   └── api_sequences/
+       └── {cam_id}_{azimuth}_{timestamp}/
+           ├── images/
+           │   ├── pyronear-alert-wildfire-{cam_id}-{azimuth}-{timestamp}.jpg
+           │   └── ...
+           └── labels/
+               ├── *.txt (empty files for unlabeled data)
+               └── ...
+   ```
+
+3. **Credentials**: API authentication uses environment variables from `.env` file (see **Configuration** section).
 
 #### Prerequisites for Detection
 
@@ -298,6 +338,21 @@ cd ../../pyro-engine
 pip install -r requirements.txt
 pip install -e .
 ```
+
+---
+
+## Configuration
+
+### Annotation API Credentials
+
+Create a `.env` file in the pyro-scrapper root with your annotation API credentials:
+
+```
+MAIN_ANNOTATION_LOGIN=your_username
+MAIN_ANNOTATION_PASSWORD=your_password
+```
+
+These credentials are used by `import_yolo_sequence.py` to authenticate with `https://annotationapi.pyronear.org/`.
 
 ---
 
@@ -341,7 +396,8 @@ pip install -e .
 
 ## Next steps / TO DO
 
-- Connexion à l'API d'annotation à faire plus proprement. Actuellement les images retournées positives sont copiées dans un dossier `annotations/` → créer un code d'ingestion de ce dossier par l'API d'annotation.
-- Intégrer la dépendance de pyro-engine directement dans les requirements du projet pyro-scrapper afin qu'une unique commande `pip install -r requirements.txt` suffise.
-- Vérifier la fréquence de scrapping afin que toutes les images prises en une journée soient possiblement inférées en une nuit.
-- Utiliser la librairie CodeCarbon afin de quantifier l'impact de notre code.
+- ✅ **API Integration** - Annotation API now integrated via `annotation_api.py` with automatic YOLO format conversion and submission (completed)
+- 🔄 **Testing with Real Fire Images** - Validate detection accuracy with actual wildfire imagery
+- Integrate the pyro-engine dependency directly into the pyro-scrapper requirements.txt to allow setup via a single `pip install -r requirements.txt` command
+- Verify scraping frequency to ensure all images captured during the day can be processed during the night
+- Integrate CodeCarbon library to quantify environmental impact of the code

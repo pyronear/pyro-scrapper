@@ -1,9 +1,12 @@
-"""Utilities to bridge pyro-scrapper images with pyroengine.
+"""Pipeline orchestration for wildfire detection and annotation API submission.
 
-This script scans the `images/` folder produced by the scrapy pipeline,
-groups images by their containing folder (typically `cam_id/azimuth/`),
-extracts timestamps from filenames, and finds sequences of N images where
-each consecutive pair is separated by at most `max_gap_seconds`.
+This is the main orchestration script that coordinates:
+1. Temporal image sequence detection (via inference.py)
+2. Pyroengine fire detection inference (via inference.py)
+3. Annotation API submission (via annotation_api.py)
+
+This script serves as the bridge between the scrapy image collection pipeline
+and the pyro-annotator API, and is called by continuous_workflow.py.
 
 Filename convention expected from the pipeline:
     <cam_id>_<YYYYMMDD>_<HHMMSS>_<microseconds>_<lat>_<lon>_<cam_name>.jpg
@@ -23,38 +26,30 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import shutil
-import zlib
-import subprocess
-import sys
-from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
-from PIL import Image
 from pyroengine.core import Engine
 
 from alertwest_scraping.config import INTERVAL
+from alertwest_scraping.annotation_api import (
+    ANNOTATION_ALERT_API_ID,
+    create_yolo_sequence_dir,
+    find_folder_cam_id_and_name,
+    generate_alert_api_id,
+    import_sequence_via_annotation_api,
+    parse_azimuth,
+)
+from alertwest_scraping.inference import (
+    ImageEntry,
+    find_folder_lat_lon,
+    iter_leaf_folders,
+    run_inference_on_sequence,
+    scan_folder_for_sequences,
+)
 
-TIMESTAMP_FMT = "%Y%m%d_%H%M%S"
-
-ANNOTATION_API_BASE = "https://annotationapi.pyronear.org/"
-ANNOTATION_ALERT_API_ID = None
-ANNOTATION_ORG_ID = 1
-ANNOTATION_ORG_NAME = "alert_wildfire"
-ANNOTATION_ORG_SLUG = "alert-wildfire"
-ANNOTATION_SOURCE_API = "alert_wildfire"
-ANNOTATION_SEQUENCE_STAGE = "ready_to_annotate"
-
-@dataclass
-class ImageEntry:
-    """Container for image path and timestamp."""
-
-    path: Path
-    ts: datetime
-
+CONF_THRESH = 0.1 
 
 def images_root_from_this_file() -> Path:
     """Return the root images directory produced by scrapy.
@@ -64,338 +59,6 @@ def images_root_from_this_file() -> Path:
     """
     here = Path(__file__).parent
     return here / "images"
-
-
-def extract_timestamp_prefix(name: str) -> Optional[str]:
-    """Return the YYYYMMDD_HHMMSS portion from the filename."""
-    base = os.path.basename(name)
-    try:
-        _, rest = base.split("_", 1)
-        stem, _ = os.path.splitext(rest)
-        parts = stem.split("_")
-        if len(parts) < 2:
-            return None
-        return "_".join(parts[:2])
-    except ValueError:
-        return None
-
-
-def parse_timestamp_from_filename(name: str) -> Optional[datetime]:
-    """Extract timestamp from filename based on pipeline pattern.
-
-    Expected pattern: CAMID_YYYYMMDD_HHMMSS_MICRO_lat_long_name.jpg
-    Returns None if it doesn't match or parses.
-    """
-    ts_str = extract_timestamp_prefix(name)
-    if not ts_str:
-        return None
-    try:
-        return datetime.strptime(ts_str, TIMESTAMP_FMT)
-    except ValueError:
-        return None
-
-
-def parse_lat_lon_from_filename(name: str) -> tuple[Optional[float], Optional[float]]:
-    """Extract latitude/longitude from filename suffix if present."""
-    base = os.path.basename(name)
-    try:
-        _, rest = base.split("_", 1)
-        stem, _ = os.path.splitext(rest)
-        parts = stem.split("_")
-        if len(parts) < 5:
-            return None, None
-        lat_raw = parts[3]
-        lon_raw = parts[4]
-        return float(lat_raw), float(lon_raw)
-    except (ValueError, TypeError):
-        return None, None
-
-
-def parse_cam_name_from_filename(name: str) -> Optional[str]:
-    """Extract camera name from filename suffix if present."""
-    base = os.path.basename(name)
-    try:
-        _, rest = base.split("_", 1)
-        stem, _ = os.path.splitext(rest)
-        parts = stem.split("_")
-        if len(parts) < 6:
-            return None
-        cam_name = "_".join(parts[5:]).strip()
-        return cam_name or None
-    except (ValueError, TypeError):
-        return None
-
-
-def find_folder_lat_lon(folder: Path) -> tuple[Optional[float], Optional[float]]:
-    """Return the first lat/lon found in the folder's filenames."""
-    for image_path in folder.glob("*.jpg"):
-        lat, lon = parse_lat_lon_from_filename(image_path.name)
-        if lat is not None and lon is not None:
-            return lat, lon
-    return None, None
-
-
-def find_folder_cam_name(folder: Path) -> Optional[str]:
-    """Return the first camera name found in the folder's filenames."""
-    for image_path in folder.glob("*.jpg"):
-        cam_name = parse_cam_name_from_filename(image_path.name)
-        if cam_name:
-            return cam_name
-    return None
-
-
-def find_sequences(sorted_entries: List[ImageEntry], n: int, max_gap_seconds: int) -> List[List[ImageEntry]]:
-    """Find sequences of length `n` where every consecutive gap ≤ `max_gap_seconds`.
-
-    Args:
-        sorted_entries: image entries sorted by timestamp ascending.
-        n: required sequence length.
-        max_gap_seconds: maximum allowed gap between consecutive images.
-
-    Returns:
-        List of sequences (each sequence is a list of ImageEntry).
-
-    """
-    if n <= 1:
-        return [[e] for e in sorted_entries]
-
-    res: List[List[ImageEntry]] = []
-    m = len(sorted_entries)
-    if m < n:
-        return res
-
-    # Sliding window check of consecutive gaps
-    for i in range(0, m - n + 1):
-        window = sorted_entries[i : i + n]
-        ok = True
-        for a, b in zip(window, window[1:]):
-            gap = (b.ts - a.ts).total_seconds()
-            if gap < 0 or gap > max_gap_seconds:
-                ok = False
-                break
-        if ok:
-            res.append(window)
-    return res
-
-
-def scan_folder_for_sequences(folder: Path, n: int, max_gap_seconds: int) -> List[List[ImageEntry]]:
-    """Scan one folder and return sequences of images meeting the criteria."""
-    entries: List[ImageEntry] = []
-    for p in sorted(folder.glob("*.jpg")):
-        ts = parse_timestamp_from_filename(p.name)
-        if ts is None:
-            continue
-        entries.append(ImageEntry(p, ts))
-    entries.sort(key=lambda e: e.ts)
-    return find_sequences(entries, n=n, max_gap_seconds=max_gap_seconds)
-
-
-def iter_leaf_folders(root: Path) -> Iterable[Path]:
-    """Yield leaf folders under `root` that contain images.
-
-    The scrapy pipeline organizes images under `images/<cam_id>/<azimuth>/`.
-    This function yields each `<azimuth>` folder.
-    """
-    if not root.exists():
-        return []
-    # Expect two-level nesting: cam_id / azimuth / files
-    for cam_dir in root.iterdir():
-        if not cam_dir.is_dir():
-            continue
-        for az_dir in cam_dir.iterdir():
-            if not az_dir.is_dir():
-                continue
-            yield az_dir
-
-
-def resolve_annotation_script_path() -> Optional[Path]:
-    """Locate the import_yolo_sequence script from the pyro-annotator repo."""
-    repo_root = Path(__file__).resolve().parents[2]
-    script_path = (
-        repo_root
-        / "pyro-annotator"
-        / "annotation_api"
-        / "scripts"
-        / "data_transfer"
-        / "ingestion"
-        / "platform"
-        / "import_yolo_sequence.py"
-    )
-    return script_path if script_path.exists() else None
-
-
-def build_annotation_env(annotation_root: Path) -> dict:
-    """Ensure annotation_api src and scripts are on PYTHONPATH."""
-    env = os.environ.copy()
-    extra_paths = [str(annotation_root), str(annotation_root / "src")]
-    existing = env.get("PYTHONPATH", "")
-    if existing:
-        extra_paths.append(existing)
-    env["PYTHONPATH"] = os.pathsep.join(extra_paths)
-    return env
-
-
-def parse_azimuth(value: str) -> Optional[int]:
-    """Parse azimuth string to int when possible."""
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def create_yolo_sequence_dir(
-    sequence: List[ImageEntry], output_dir: Path, cam_id: str, azimuth: str
-) -> Path:
-    """Create a YOLO-compatible sequence folder with images and empty labels."""
-    seq_start = sequence[0].ts.strftime("%Y%m%d_%H%M%S_%f")
-    seq_root = output_dir / "api_sequences" / f"{cam_id}_{azimuth}_{seq_start}"
-    images_dir = seq_root / "images"
-    labels_dir = seq_root / "labels"
-    images_dir.mkdir(parents=True, exist_ok=True)
-    labels_dir.mkdir(parents=True, exist_ok=True)
-
-    for entry in sequence:
-        recorded_at = entry.ts.strftime("%Y-%m-%dT%H-%M-%S")
-        image_name = (
-            f"pyronear-{ANNOTATION_ORG_SLUG}-{cam_id}-{azimuth}-{recorded_at}.jpg"
-        )
-        dest_image = images_dir / image_name
-        shutil.copy2(entry.path, dest_image)
-        label_path = labels_dir / f"{dest_image.stem}.txt"
-        label_path.write_text("", encoding="utf-8")
-
-    return seq_root
-
-
-def generate_alert_api_id(cam_id: str, azimuth: str, recorded_at: datetime) -> int:
-    """Generate a stable alert_api_id per sequence to avoid collisions."""
-    seed = f"{cam_id}:{azimuth}:{recorded_at.isoformat()}"
-    return zlib.crc32(seed.encode("utf-8")) & 0x7FFFFFFF
-
-
-def log_model_status(logger: logging.Logger) -> None:
-    """Log the expected model files and sizes for troubleshooting."""
-    try:
-        from pyroengine.vision import MODEL_NAME
-    except Exception as exc:
-        logger.warning("Unable to import pyroengine.vision: %s", exc)
-        return
-
-    cwd = Path.cwd()
-    model_tar = Path("data") / MODEL_NAME
-    extract_dir = Path("data") / MODEL_NAME.replace(".tar.gz", "")
-    param_path = extract_dir / "best_ncnn_model" / "model.ncnn.param"
-    bin_path = extract_dir / "best_ncnn_model" / "model.ncnn.bin"
-
-    def size_or_missing(path: Path) -> str:
-        if not path.exists():
-            return "missing"
-        try:
-            return str(path.stat().st_size)
-        except OSError:
-            return "unknown"
-
-    logger.info("Model debug: cwd=%s", cwd)
-    logger.info("Model debug: tar=%s size=%s", model_tar, size_or_missing(model_tar))
-    logger.info("Model debug: param=%s size=%s", param_path, size_or_missing(param_path))
-    logger.info("Model debug: bin=%s size=%s", bin_path, size_or_missing(bin_path))
-
-
-def import_sequence_via_annotation_api(
-    sequence_dir: Path,
-    cam_id: str,
-    cam_name: str,
-    azimuth: Optional[int],
-    lat: float,
-    lon: float,
-    alert_api_id: int,
-    logger: logging.Logger,
-) -> None:
-    """Invoke the annotation API import script for a sequence."""
-    script_path = resolve_annotation_script_path()
-    if not script_path:
-        logger.warning("Missing import_yolo_sequence.py script. Skipping API import.")
-        return
-
-    annotation_root = script_path.parents[4]
-    env = build_annotation_env(annotation_root)
-
-    cmd = [
-        sys.executable,
-        str(script_path),
-        "--sequence-dir",
-        str(sequence_dir),
-        "--api-base",
-        ANNOTATION_API_BASE,
-        "--alert-api-id",
-        str(alert_api_id),
-        "--source-api",
-        ANNOTATION_SOURCE_API,
-        "--sequence-stage",
-        ANNOTATION_SEQUENCE_STAGE,
-        "--organisation-id",
-        str(ANNOTATION_ORG_ID),
-        "--organisation-name",
-        ANNOTATION_ORG_NAME,
-        "--camera-id",
-        str(cam_id),
-        "--camera-name",
-        cam_name,
-        "--lat",
-        str(lat),
-        "--lon",
-        str(lon),
-        "--loglevel",
-        "info",
-    ]
-    if azimuth is not None:
-        cmd.extend(["--azimuth", str(azimuth)])
-
-    try:
-        result = subprocess.run(
-            cmd,
-            check=False,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-    except Exception as exc:
-        logger.warning("API import failed for %s: %s", sequence_dir, exc)
-        return
-
-    if result.returncode != 0:
-        stderr = (result.stderr or "").strip()
-        stdout = (result.stdout or "").strip()
-        details = stderr or stdout or "Unknown error"
-        logger.warning("API import failed for %s: %s", sequence_dir, details)
-
-
-def run_inference_on_sequence(
-    engine: Engine, sequence: List[ImageEntry], conf_thresh: float = 0.01
-) -> tuple[bool, float]:
-    """Run pyroengine inference on a sequence of images.
-
-    Args:
-        engine: pyroengine Engine instance.
-        sequence: list of ImageEntry objects in temporal order.
-        conf_thresh: confidence threshold to consider a detection positive.
-
-    Returns:
-        Tuple of (has_detection, max_confidence).
-
-    """
-    max_conf = 0.0
-    for entry in sequence:
-        try:
-            img = Image.open(entry.path).convert("RGB")
-            conf = engine.predict(img)
-            if conf > max_conf:
-                max_conf = conf
-        except Exception as e:
-            print(f"  Error processing {entry.path.name}: {e}")
-            continue
-
-    return max_conf >= conf_thresh, max_conf
 
 
 def handle_detection(folder: Path, sequence: List[ImageEntry], output_dir: Path) -> None:
@@ -428,22 +91,23 @@ def run_inference_pipeline(
     images_dir: Path,
     output_dir: Path,
     n_consecutive: int = 6,
-    max_gap_seconds: int = 120,
-    conf_thresh: float = 0.01,
+    max_gap_seconds: int = INTERVAL * 1.5,
+    min_detections: int = 6/2,  # Minimum images with fire detection (default: half of sequence)
     logger: Optional[logging.Logger] = None,
 ) -> int:
     """Run the complete inference pipeline on collected images.
 
-    This is the main entry point for the inference workflow. It processes all
-    images in the images directory, detects fire sequences, and saves results
-    to the annotations directory.
+    This is the main orchestration entry point. It:
+    1. Scans images for temporal sequences (via inference.py)
+    2. Runs fire detection on each sequence (via inference.py)
+    3. Submits positive detections to the API (via annotation_api.py)
 
     Args:
         images_dir: Root images directory path.
         output_dir: Output directory for detected sequences.
         n_consecutive: Required number of consecutive images in a sequence.
         max_gap_seconds: Maximum allowed gap between consecutive images in seconds.
-        conf_thresh: Confidence threshold for fire detection.
+        min_detections: Minimum number of images with fire detection (conf > 0.15) to trigger alert.
         logger: Optional logger instance (defaults to print statements).
 
     Returns:
@@ -460,10 +124,10 @@ def run_inference_pipeline(
         return 0
 
     log.info("🔥 Initializing pyroengine for inference...")
-    log_model_status(log)
     try:
-        engine = Engine(conf_thresh=conf_thresh)
-        log.info(f"✅ Engine loaded with confidence threshold: {conf_thresh}")
+        engine = Engine(conf_thresh=CONF_THRESH)  # Fixed: conf_thresh not conf_tresh
+        log.info(f"✅ Engine loaded with confidence threshold: {CONF_THRESH}")
+        log.info(f"✅ Sequence detection requires {min_detections}/{n_consecutive} images with fire")
     except Exception as e:
         log.error(f"❌ Error loading pyroengine: {e}")
         raise
@@ -479,14 +143,18 @@ def run_inference_pipeline(
 
     for folder in iter_leaf_folders(images_dir):
         total_folders += 1
-        seqs = scan_folder_for_sequences(folder, n=n_consecutive, max_gap_seconds=max_gap_seconds)
+        seqs = scan_folder_for_sequences(
+            folder,
+            n=n_consecutive,
+            max_gap_seconds=max_gap_seconds,
+        )
         if not seqs:
             continue
 
         total_sequences += len(seqs)
-        cam_id = folder.parent.name
+        cam_id, cam_name = find_folder_cam_id_and_name(folder)
         azimuth = folder.name
-        cam_name = find_folder_cam_name(folder) or cam_id
+        
         lat, lon = find_folder_lat_lon(folder)
         missing_lat_lon = lat is None or lon is None
         if missing_lat_lon:
@@ -505,8 +173,8 @@ def run_inference_pipeline(
                 f"  Sequence #{idx}: {first_ts} -> {last_ts} ({len(seq)} images)",
             )
 
-            has_detection, max_conf = run_inference_on_sequence(engine, seq, conf_thresh)
-            log.info("    Max confidence: %.4f", max_conf)
+            has_detection, avg_conf = run_inference_on_sequence(engine, seq, min_detections)
+            log.info("    Average confidence: %.4f", avg_conf)
 
             if has_detection:
                 log.info(" 🔥 DETECTION!")
@@ -552,7 +220,7 @@ def main(
     images_dir: Optional[str],
     n: int,
     max_gap_seconds: int,
-    conf_thresh: float,
+    min_detections: int,
     output_dir: Optional[str],
 ) -> int:
     """Process image sequences and run detection.
@@ -561,7 +229,7 @@ def main(
         images_dir: Root images directory path.
         n: Required number of consecutive images.
         max_gap_seconds: Maximum allowed gap between consecutive images.
-        conf_thresh: Confidence threshold for detection.
+        min_detections: Minimum number of images with fire detection.
         output_dir: Output directory for detected sequences.
 
     Returns:
@@ -577,7 +245,7 @@ def main(
             output_dir=output_path,
             n_consecutive=n,
             max_gap_seconds=max_gap_seconds,
-            conf_thresh=conf_thresh,
+            min_detections=min_detections,
         )
         return 0
     except Exception as e:
@@ -601,10 +269,10 @@ if __name__ == "__main__":
         help="Maximum allowed gap in seconds between consecutive images",
     )
     parser.add_argument(
-        "--conf-thresh",
-        type=float,
-        default=0.01,
-        help="Confidence threshold for detection",
+        "--min-detections",
+        type=int,
+        default=3,  # Half of 6 images by default
+        help="Minimum number of images with fire detection (conf > 0.15) to trigger alert",
     )
     parser.add_argument(
         "--output-dir",
@@ -614,4 +282,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    raise SystemExit(main(args.images_dir, args.n, args.max_gap, args.conf_thresh, args.output_dir))
+    raise SystemExit(main(args.images_dir, args.n, args.max_gap, args.min_detections, args.output_dir))

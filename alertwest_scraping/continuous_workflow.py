@@ -77,6 +77,15 @@ class ContinuousWorkflow:
             latitude=39.8283,
             longitude=-98.5795,
         )
+        
+        # # New York location for sun calculations
+        # self.location = LocationInfo(
+        #     name="New_York",
+        #     region="USA",
+        #     timezone="America/New_York",
+        #     latitude=40.7128,
+        #     longitude=-74.0060,
+        # )
 
         # Handle signals for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -213,7 +222,7 @@ class ContinuousWorkflow:
                 output_dir=self.annotations_dir,
                 n_consecutive=6,
                 max_gap_seconds=120,
-                conf_thresh=0.15,
+                min_detections=6/2, # Adjusted for cumulative confidence over 6 images. (positive detection for half of it)
                 logger=logger,
             )
 
