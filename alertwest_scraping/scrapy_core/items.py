@@ -14,6 +14,8 @@ class PyronearItem(scrapy.Item):
     id = scrapy.Field()
     name = scrapy.Field()
     azimuth = scrapy.Field()
+    lat = scrapy.Field()
+    lon = scrapy.Field()
     offline = scrapy.Field()
     screenshot = scrapy.Field()
     provider = scrapy.Field()

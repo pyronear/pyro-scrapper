@@ -33,8 +33,17 @@ class GetImagesSpider(scrapy.Spider):
         """Load camera IDs and yield requests for matching cameras."""
         # Get the full camera json from the API and the keys
         data = json.loads(response.text)
-        short_key_cams, _ = extract_keys(data)
+        short_key_cams, short_key_locs = extract_keys(data)
         data_cams = data.get("data", {}).get("cams", {}).get("data", [])
+        data_locs = data.get("data", {}).get("locs", {}).get("data", [])
+        
+        # Construct a mapping of location_id to (lat, lon) for quick lookup
+        for cam in data_cams:
+            if cam.get(short_key_cams["camId"]) in self.camera_ids:
+                for loc in data_locs: 
+                    if loc.get(short_key_locs["locId"]) == cam.get(short_key_cams["camLocation"]): 
+                        locs_by_id = {loc.get(short_key_locs["locId"]): ( loc.get(short_key_locs["locLat"]), loc.get(short_key_locs["locLon"]) ) for loc in data_locs}
+            
 
         for cam in data_cams:
             # Process only cameras in the camera_ids list
@@ -43,6 +52,8 @@ class GetImagesSpider(scrapy.Spider):
                     id=cam.get(short_key_cams["camId"]),
                     name=cam.get(short_key_cams["camName"]),
                     azimuth=cam.get(short_key_cams["camAzimuth"]),
+                    lat=locs_by_id.get(cam.get(short_key_cams["camLocation"]), (None, None))[0],
+                    lon=locs_by_id.get(cam.get(short_key_cams["camLocation"]), (None, None))[1],
                     screenshot=cam.get(short_key_cams["camScreenshot"]),
                     offline=cam.get(short_key_cams["camOffline"]),
                     provider=cam.get(short_key_cams["providerName"]),
