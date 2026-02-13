@@ -60,9 +60,13 @@ def parse_azimuth(value: str) -> Optional[int]:
 
 
 def create_yolo_sequence_dir(
-    sequence, output_dir: Path, cam_id: str, azimuth: str
+    sequence,
+    output_dir: Path,
+    cam_id: str,
+    azimuth: str,
+    labels_by_path: Optional[dict[Path, list[tuple[int, float, float, float, float]]]] = None,
 ) -> Path:
-    """Create a YOLO-compatible sequence folder with images and empty labels.
+    """Create a YOLO-compatible sequence folder with images and labels.
 
     Args:
         sequence: list of ImageEntry objects with path and ts attributes.
@@ -89,7 +93,12 @@ def create_yolo_sequence_dir(
         dest_image = images_dir / image_name
         shutil.copy2(entry.path, dest_image)
         label_path = labels_dir / f"{dest_image.stem}.txt"
-        label_path.write_text("", encoding="utf-8")
+        labels = [] if labels_by_path is None else labels_by_path.get(entry.path, [])
+        if labels:
+            lines = [f"{cls_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}" for cls_id, cx, cy, w, h in labels]
+            label_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        else:
+            label_path.write_text("", encoding="utf-8")
 
     return seq_root
 

@@ -13,7 +13,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from PIL import Image
 from pyroengine.core import Engine
@@ -126,6 +126,17 @@ def find_sequences(
     return res
 
 
+def xyxy_to_yolo(x1: float, y1: float, x2: float, y2: float) -> Optional[Tuple[float, float, float, float]]:
+    """Convert normalized xyxy box to YOLO normalized cx, cy, w, h."""
+    if x2 <= x1 or y2 <= y1:
+        return None
+    cx = (x1 + x2) / 2.0
+    cy = (y1 + y2) / 2.0
+    w = x2 - x1
+    h = y2 - y1
+    return cx, cy, w, h
+
+
 def scan_folder_for_sequences(
     folder: Path,
     n: int,
@@ -161,7 +172,7 @@ def iter_leaf_folders(root: Path) -> Iterable[Path]:
 
 def run_inference_on_sequence(
     engine: Engine, sequence: List[ImageEntry], min_detections: int = 3
-) -> tuple[bool, float]:
+) -> tuple[bool, float, Dict[Path, List[Tuple[int, float, float, float, float]]]]:
     """Run pyroengine inference on a sequence of images.
 
     Args:
@@ -170,7 +181,7 @@ def run_inference_on_sequence(
         min_detections: minimum number of images with fire detection required.
 
     Returns:
-        Tuple of (has_detection, average_confidence).
+        Tuple of (has_detection, average_confidence, labels_by_path).
 
     """
     # Reset Engine state to avoid contamination between sequences
@@ -180,6 +191,7 @@ def run_inference_on_sequence(
     engine._states["-1"]["anchor_bbox"] = None
     
     raw_confidences = []  # Raw model confidences (last bbox confidence)
+    labels_by_path: Dict[Path, List[Tuple[int, float, float, float, float]]] = {}
     detections_count = 0
     
     for entry in sequence:
@@ -192,6 +204,15 @@ def run_inference_on_sequence(
             # Get maximum confidence from all detected boxes
             max_conf = float(preds[:, 4].max()) if preds.size > 0 else 0.0
             raw_confidences.append(max_conf)
+
+            labels: List[Tuple[int, float, float, float, float]] = []
+            for x1, y1, x2, y2, _ in preds:
+                yolo_box = xyxy_to_yolo(float(x1), float(y1), float(x2), float(y2))
+                if yolo_box is None:
+                    continue
+                cx, cy, w, h = yolo_box
+                labels.append((0, cx, cy, w, h))
+            labels_by_path[entry.path] = labels
             
             if max_conf > engine.conf_thresh:  # Count images with fire detected (conf > 0.15)
                 detections_count += 1
@@ -207,4 +228,4 @@ def run_inference_on_sequence(
     logging.info(f"  Detections: {detections_count}/{len(sequence)} images with fire (threshold: {min_detections})")
     logging.info(f"  Average confidence: {avg_conf:.4f}")
     
-    return has_fire, avg_conf
+    return has_fire, avg_conf, labels_by_path

@@ -173,7 +173,11 @@ def run_inference_pipeline(
                 f"  Sequence #{idx}: {first_ts} -> {last_ts} ({len(seq)} images)",
             )
 
-            has_detection, avg_conf = run_inference_on_sequence(engine, seq, min_detections)
+            has_detection, avg_conf, labels_by_path = run_inference_on_sequence(
+                engine,
+                seq,
+                min_detections,
+            )
             log.info("    Average confidence: %.4f", avg_conf)
 
             if has_detection:
@@ -191,7 +195,13 @@ def run_inference_pipeline(
                 if alert_api_id is None:
                     alert_api_id = generate_alert_api_id(cam_id, azimuth, seq[0].ts)
 
-                sequence_dir = create_yolo_sequence_dir(seq, output_dir, cam_id, azimuth)
+                sequence_dir = create_yolo_sequence_dir(
+                    seq,
+                    output_dir,
+                    cam_id,
+                    azimuth,
+                    labels_by_path=labels_by_path,
+                )
                 import_sequence_via_annotation_api(
                     sequence_dir,
                     cam_id,
