@@ -18,7 +18,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from astral import LocationInfo
 from astral.sun import sun
@@ -96,11 +96,18 @@ class ContinuousWorkflow:
 
     def is_night(self):
         """Check if it's currently night at the central US location."""        
-        tz = (
-           ZoneInfo(self.location.timezone)
-            if isinstance(self.location.timezone, str)
-            else self.location.timezone
-        )
+        if isinstance(self.location.timezone, str):
+            try:
+                tz = ZoneInfo(self.location.timezone)
+            except ZoneInfoNotFoundError:
+                logger.error(
+                    "Timezone data not found for '%s'. Install 'tzdata' to fix this. "
+                    "Falling back to UTC.",
+                    self.location.timezone,
+                )
+                tz = timezone.utc
+        else:
+            tz = self.location.timezone
         now = datetime.now(tz=tz)
         s = sun(self.location.observer, date=now.date(), tzinfo=tz)
         return now < s["sunrise"] or now > s["sunset"]
