@@ -18,6 +18,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from astral import LocationInfo
 from astral.sun import sun
@@ -94,9 +95,14 @@ class ContinuousWorkflow:
         sys.exit(0)
 
     def is_night(self):
-        """Check if it's currently night at the central US location."""
-        now = datetime.now(timezone.utc)
-        s = sun(self.location.observer, date=now.date())
+        """Check if it's currently night at the central US location."""        
+        tz = (
+           ZoneInfo(self.location.timezone)
+            if isinstance(self.location.timezone, str)
+            else self.location.timezone
+        )
+        now = datetime.now(tz=tz)
+        s = sun(self.location.observer, date=now.date(), tzinfo=tz)
         return now < s["sunrise"] or now > s["sunset"]
 
     def run_spider_filtered_ids(self):
