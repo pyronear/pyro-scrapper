@@ -74,13 +74,13 @@ class ContinuousWorkflow:
         self.n_consecutive = N_CONSECUTIVE
         self.max_gap_seconds = MAX_GAP_SECONDS
         self.min_detections = MIN_DETECTIONS
-        # US Central location for sun calculations
+        # Salt Lake City location for sun calculations
         self.location = LocationInfo(
-            name="US_Central",
+            name="SaltLakeCity",
             region="USA",
-            timezone="US/Central",
-            latitude=39.8283,
-            longitude=-98.5795,
+            timezone="America/Denver",
+            latitude=40.7608,
+            longitude=-111.8910,
         )
 
         # Handle signals for clean shutdown
