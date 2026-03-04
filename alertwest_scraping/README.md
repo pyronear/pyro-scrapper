@@ -48,7 +48,7 @@ pip install -r requirements.txt
 
 **Annotation API Credentials**
 
-Create a `.env` file in the pyro-scrapper root with your pyronear annotation API credentials (otherwise all detected wildfire sequences will fail to be sent to the API):
+Create a `.env` file in the ./pyro-annotator/annotation_api/ folder with your pyronear annotation API credentials (otherwise all detected wildfire sequences will fail to be sent to the API):
 
 ```
 MAIN_ANNOTATION_LOGIN=your_username
