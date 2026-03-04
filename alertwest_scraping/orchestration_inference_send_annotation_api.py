@@ -188,7 +188,7 @@ def main(
     n: int,
     max_gap_seconds: int,
     min_detections: int,
-    ) -> int:
+) -> int:
     """Process image sequences and run detection.
 
     Args:

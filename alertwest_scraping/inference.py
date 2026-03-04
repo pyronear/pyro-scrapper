@@ -217,7 +217,9 @@ def run_inference_on_sequence(
             if max_conf > engine.conf_thresh:  # Count images with fire detected (conf > 0.15)
                 detections_count += 1
 
-            logging.info(f"    Image {entry.path.name}: max_conf={max_conf:.4f} (detected: {max_conf > engine.conf_thresh})")
+            logging.info(
+                f"    Image {entry.path.name}: max_conf={max_conf:.4f} (detected: {max_conf > engine.conf_thresh})"
+            )
         except Exception as e:
             print(f"  Error processing {entry.path.name}: {e}")
             continue

@@ -101,8 +101,7 @@ class ContinuousWorkflow:
                 tz = ZoneInfo(self.location.timezone)
             except ZoneInfoNotFoundError:
                 logger.error(
-                    "Timezone data not found for '%s'. Install 'tzdata' to fix this. "
-                    "Falling back to UTC.",
+                    "Timezone data not found for '%s'. Install 'tzdata' to fix this. Falling back to UTC.",
                     self.location.timezone,
                 )
                 tz = timezone.utc

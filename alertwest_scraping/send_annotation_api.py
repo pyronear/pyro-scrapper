@@ -85,9 +85,7 @@ def create_yolo_sequence_dir(
 
     for entry in sequence:
         recorded_at = entry.ts.strftime("%Y-%m-%dT%H-%M-%S")
-        image_name = (
-            f"pyronear-{ANNOTATION_ORG_NAME}-{cam_id}-{azimuth}-{recorded_at}.jpg"
-        )
+        image_name = f"pyronear-{ANNOTATION_ORG_NAME}-{cam_id}-{azimuth}-{recorded_at}.jpg"
         dest_image = images_dir / image_name
         shutil.copy2(entry.path, dest_image)
         label_path = labels_dir / f"{dest_image.stem}.txt"
@@ -233,13 +231,11 @@ def import_sequence_via_annotation_api(
                 max(0.0, min(1.0, cx + w / 2.0)),
                 max(0.0, min(1.0, cy + h / 2.0)),
             ]
-            predictions.append(
-                {
-                    "xyxyn": xyxyn,
-                    "confidence": 1.0,
-                    "class_name": class_name,
-                }
-            )
+            predictions.append({
+                "xyxyn": xyxyn,
+                "confidence": 1.0,
+                "class_name": class_name,
+            })
 
         detection_payload = {
             "algo_predictions": {"predictions": predictions},
@@ -269,20 +265,16 @@ def import_sequence_via_annotation_api(
                 max(0.0, min(1.0, cx + w / 2.0)),
                 max(0.0, min(1.0, cy + h / 2.0)),
             ]
-            bboxes_by_class.setdefault(class_id, []).append(
-                {"detection_id": det_id, "xyxyn": xyxyn}
-            )
+            bboxes_by_class.setdefault(class_id, []).append({"detection_id": det_id, "xyxyn": xyxyn})
 
     sequences_bbox: List[Dict] = []
     for class_id, bboxes in bboxes_by_class.items():
         if not bboxes:
             continue
-        sequences_bbox.append(
-                {
-                    "is_smoke": False,
-                    "bboxes": bboxes,
-                }
-)
+        sequences_bbox.append({
+            "is_smoke": False,
+            "bboxes": bboxes,
+        })
 
     annotation_payload = {
         "sequence_id": seq_id,
