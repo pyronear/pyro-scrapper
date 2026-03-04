@@ -95,7 +95,7 @@ class ContinuousWorkflow:
         sys.exit(0)
 
     def is_night(self):
-        """Check if it's currently night at the central US location."""        
+        """Check if it's currently night at the central US location."""
         if isinstance(self.location.timezone, str):
             try:
                 tz = ZoneInfo(self.location.timezone)
