@@ -114,6 +114,7 @@ pyroscrapper/version.py
 
 # Ignore config file
 ./data
+alertwest_scraping/config.py
 # Checkpoints
 *.pth
 *.onnx

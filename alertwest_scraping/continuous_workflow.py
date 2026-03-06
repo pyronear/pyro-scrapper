@@ -258,7 +258,7 @@ class ContinuousWorkflow:
 
         # Calculate wait time
         elapsed = time.time() - cycle_start
-        wait_time = max(0, 30 - elapsed)
+        wait_time = max(0, self.interval - elapsed)
 
         if wait_time > 0:
             logger.info(f"⏳ Waiting {wait_time:.2f}s before next scrape...")
