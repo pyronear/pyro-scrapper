@@ -3,7 +3,7 @@
 from pathlib import Path
 
 # Duration (in seconds) between each scraping cycle
-INTERVAL = 600
+INTERVAL = 60
 
 # Number of raspberry pi devices
 N_RASPBERRY = 2
