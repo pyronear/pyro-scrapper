@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from alertwest_scraping.send_annotation_api import import_sequence_via_annotation_api
-from alertwest_scraping.inference import ImageEntry
+from alertwest_scraping.utils_inference_annotation import ImageEntry
 
 
 def test_import_sequence_via_annotation_api_uses_credentials(monkeypatch, tmp_path):
@@ -81,8 +81,8 @@ def test_import_sequence_via_annotation_api_uses_credentials(monkeypatch, tmp_pa
     ]
 
     labels_by_path = {
-        img1: [(0, 0.5, 0.5, 0.2, 0.2)],
-        img2: [(0, 0.4, 0.4, 0.3, 0.3)],
+        img1: [(0, 0.5, 0.5, 0.2, 0.2, 0.87)],
+        img2: [(0, 0.4, 0.4, 0.3, 0.3, 0.63)],
     }
 
     import_sequence_via_annotation_api(

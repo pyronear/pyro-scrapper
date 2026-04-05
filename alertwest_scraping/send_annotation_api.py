@@ -9,113 +9,16 @@ invocation of the annotation import script.
 from __future__ import annotations
 
 import logging
-import os
-import shutil
 import sys
-import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 ANNOTATION_API_BASE = "https://annotationapi.pyronear.org/"
-ANNOTATION_ALERT_API_ID = None  # None enables per-sequence generation
 ANNOTATION_ORG_ID = 1
 ANNOTATION_ORG_NAME = "alert_west"
 ANNOTATION_SOURCE_API = "alert_wildfire"
 ANNOTATION_SEQUENCE_STAGE = "ready_to_annotate"
-
-
-def parse_cam_id_and_name_from_filename(name: str) -> Optional[str]:
-    """Extract camera name from filename suffix if present."""
-    base = os.path.basename(name)
-    try:
-        _, rest = base.split("_", 1)
-        stem, _ = os.path.splitext(rest)
-        parts = stem.split("_")
-        if len(parts) < 6:
-            return None
-        cam_id = parts[0]
-        cam_name = "_".join(parts[5:]).strip()
-        return cam_id, cam_name or None
-    except (ValueError, TypeError):
-        return None
-
-
-def find_folder_cam_id_and_name(folder: Path) -> Optional[str]:
-    """Return the first camera name found in the folder's filenames."""
-    for image_path in folder.glob("*.jpg"):
-        cam_id, cam_name = parse_cam_id_and_name_from_filename(image_path.name)
-        return cam_id, cam_name
-
-
-def parse_azimuth(value: str) -> Optional[int]:
-    """Parse azimuth string to int when possible."""
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def create_yolo_sequence_dir(
-    sequence,
-    output_dir: Path,
-    cam_id: str,
-    azimuth: str,
-    labels_by_path: Optional[dict[Path, list[tuple[int, float, float, float, float]]]] = None,
-) -> Path:
-    """Create a YOLO-compatible sequence folder with images and labels.
-
-    Args:
-        sequence: list of ImageEntry objects with path and ts attributes.
-        output_dir: root output directory for sequences.
-        cam_id: camera identifier string.
-        azimuth: camera azimuth string.
-        labels_by_path: optional YOLO labels per image path.
-
-    Returns:
-        Path to the created sequence directory.
-
-    """
-    seq_start = sequence[0].ts.strftime("%Y%m%d_%H%M%S_%f")
-    seq_root = output_dir / "api_sequences" / f"{cam_id}_{azimuth}_{seq_start}"
-    images_dir = seq_root / "images"
-    labels_dir = seq_root / "labels"
-    images_dir.mkdir(parents=True, exist_ok=True)
-    labels_dir.mkdir(parents=True, exist_ok=True)
-
-    for entry in sequence:
-        recorded_at = entry.ts.strftime("%Y-%m-%dT%H-%M-%S")
-        image_name = f"pyronear-{ANNOTATION_ORG_NAME}-{cam_id}-{azimuth}-{recorded_at}.jpg"
-        dest_image = images_dir / image_name
-        shutil.copy2(entry.path, dest_image)
-        label_path = labels_dir / f"{dest_image.stem}.txt"
-        labels = [] if labels_by_path is None else labels_by_path.get(entry.path, [])
-        if labels:
-            lines = [f"{cls_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}" for cls_id, cx, cy, w, h in labels]
-            label_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        else:
-            label_path.write_text("", encoding="utf-8")
-
-    return seq_root
-
-
-def generate_alert_api_id(cam_id: str, azimuth: str, recorded_at: datetime) -> int:
-    """Generate a stable alert_api_id per sequence to avoid collisions.
-
-    Uses CRC32 hash of the sequence identifier to create a deterministic,
-    collision-free unique ID.
-
-    Args:
-        cam_id: camera identifier.
-        azimuth: camera azimuth.
-        recorded_at: first image timestamp in sequence.
-
-    Returns:
-        32-bit CRC32 hash as unsigned integer.
-
-    """
-    seed = f"{cam_id}:{azimuth}:{recorded_at.isoformat()}"
-    return zlib.crc32(seed.encode("utf-8")) & 0x7FFFFFFF
 
 
 def normalize_base_url(base_url: str) -> str:
@@ -158,7 +61,7 @@ def import_sequence_via_annotation_api(
     lat: float,
     lon: float,
     alert_api_id: int,
-    labels_by_path: Dict[Path, List[Tuple[int, float, float, float, float]]],
+    labels_by_path: Dict[Path, List[Tuple[int, float, float, float, float, float]]],
     logger: logging.Logger,
 ) -> None:
     """Send a sequence directly to the annotation API without local copies."""
@@ -223,7 +126,7 @@ def import_sequence_via_annotation_api(
     for image_path, recorded_at in image_infos:
         labels = labels_by_path.get(image_path, [])
         predictions = []
-        for class_id, cx, cy, w, h in labels:
+        for class_id, cx, cy, w, h, conf in labels:
             class_name = "wildfire"
             xyxyn = [
                 max(0.0, min(1.0, cx - w / 2.0)),
@@ -233,7 +136,7 @@ def import_sequence_via_annotation_api(
             ]
             predictions.append({
                 "xyxyn": xyxyn,
-                "confidence": 1.0,
+                "confidence": conf,
                 "class_name": class_name,
             })
 
@@ -258,7 +161,7 @@ def import_sequence_via_annotation_api(
             continue
 
         det_id = detection["id"]
-        for class_id, cx, cy, w, h in labels:
+        for class_id, cx, cy, w, h, _ in labels:
             xyxyn = [
                 max(0.0, min(1.0, cx - w / 2.0)),
                 max(0.0, min(1.0, cy - h / 2.0)),

@@ -68,6 +68,7 @@ def test_run_handles_night_then_day(monkeypatch, tmp_path):
     monkeypatch.setattr("alertwest_scraping.continuous_workflow.CACHE_DIR", tmp_path)
 
     wf = ContinuousWorkflow(force_get_scrapping_ids=True)
+    wf.n_raspberry = 2
     wf.images_dir = tmp_path / "images"
     wf.annotations_dir = tmp_path / "annotations"
     wf.good_ids_path = tmp_path / "good_ids.json"

@@ -55,7 +55,7 @@ MAIN_ANNOTATION_LOGIN=your_username
 MAIN_ANNOTATION_PASSWORD=your_password
 ```
 
-These credentials are used by `import_yolo_sequence.py` to authenticate with `https://annotationapi.pyronear.org/`.
+These credentials are used by the annotation API integration code to authenticate with `https://annotationapi.pyronear.org/`.
 
 ---
 
@@ -77,7 +77,7 @@ These credentials are used by `import_yolo_sequence.py` to authenticate with `ht
 That's it! The workflow automatically:
 - Fetches and filters camera IDs during the day
 - Scrapes images from assigned cameras
-- Runs wildfire detection at night and send them to the annotation API
+- Runs wildfire detection at night with Predictor and sends the resulting sequences to the annotation API
 - Cleans up images after inference
 - ... repeating until a manual stop.
 
@@ -179,11 +179,11 @@ The continuous workflow orchestrates a 24-hour cycle combining camera scraping a
 
 ### Components
 
-- **Continuous Runner**: `continuous_workflow.py` continuous loop script managing the day/night cycle and orchestrating the scraping and inference processes.
-- **Scrapy Spiders and their associated pipelines**: `scrapy_core/...` for scraping camera metadata and images.
-- **Orchestration Inference / Annotation API**: `orchestration_inference_send_annotation_api.py` pipeline managing wildfire detection and API submission.
-- **Inference**: `inference.py` Use of the pyroengine model inference on scraped images sequences.
-- **API Submission**: `send_annotation_api.py` Automated submission of detected wildfire sequences to the pyro-annotator API.
+- **Continuous Runner**: `continuous_workflow.py` manages the day/night cycle and orchestrates scraping plus inference.
+- **Scrapy spiders and pipelines**: `scrapy_core/...` download and store camera images with metadata.
+- **Predictor orchestration**: `orchestration_inference_send_annotation_api.py` scans image folders, runs the temporal Predictor, and decides when to submit a sequence.
+- **Inference utilities**: `utils_inference_annotation.py` centralizes filename parsing, folder scanning, and box conversion helpers.
+- **Annotation API client**: `send_annotation_api.py` formats the YOLO-like payload and sends sequences, detections, and annotations to pyro-annotator.
 
 ---
 
@@ -234,7 +234,7 @@ The `AlertwestImagePipeline` inherits from `scrapy.pipelines.images.ImagesPipeli
 
 ```
 images/
-└── {cam_name}/
+└── {cam_id}/
       └── {azimuth}/
             └── {cam_id}_{scraping_timestamp}_{lat}_{lon}_{cam_name}.jpg
 ```
@@ -249,7 +249,7 @@ The `orchestration_inference_send_annotation_api.py` pipeline enables automated 
 
 1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images where timestamps are separated by at most a specified gap.
 
-2. **Detection**: Each valid sequence is processed through the inference module (`inference.py`) which runs pyroengine's fire detection model on each image in the sequence.
+2. **Detection**: Each valid sequence is processed through the inference utilities module (`utils_inference_annotation.py`) which supports the wildfire detection pipeline on each image in the sequence.
 
 3. **API Submission**: Sequences with detected wildfires (enough detections) are formatted as YOLO datasets and submitted to the pyro-annotator API via the annotation API integration module (`send_annotation_api.py`).
 

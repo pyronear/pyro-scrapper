@@ -25,9 +25,10 @@ from astral.sun import sun
 
 from alertwest_scraping.config import (
     CACHE_DIR,
+    CONF_THRESH,
     INTERVAL,
     MAX_GAP_SECONDS,
-    MIN_DETECTIONS,
+    MODEL_CONF_THRESH,
     N_CONSECUTIVE,
     N_RASPBERRY,
     RASPBERRY_ID,
@@ -73,7 +74,8 @@ class ContinuousWorkflow:
         self.images_dir = Path(__file__).parent / "images"
         self.n_consecutive = N_CONSECUTIVE
         self.max_gap_seconds = MAX_GAP_SECONDS
-        self.min_detections = MIN_DETECTIONS
+        self.conf_thresh = CONF_THRESH
+        self.model_conf_thresh = MODEL_CONF_THRESH
         # Salt Lake City location for sun calculations
         self.location = LocationInfo(
             name="SaltLakeCity",
@@ -86,6 +88,15 @@ class ContinuousWorkflow:
         # Handle signals for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+
+    @staticmethod
+    def _build_scrapy_command(spider_name):
+        """Build a Scrapy command using the active Python interpreter.
+
+        Using ``python -m scrapy`` avoids Windows launcher issues when ``scrapy.exe``
+        points to a stale interpreter path.
+        """
+        return [sys.executable, "-m", "scrapy", "crawl", spider_name]
 
     def _signal_handler(self, signum, frame):
         """Handle stop signals (Ctrl+C, etc.)."""
@@ -115,7 +126,7 @@ class ContinuousWorkflow:
         """Launch the spider_filtered_ids spider to collect all camera IDs."""
         try:
             logger.info("🕵️  Running spider_filtered_ids to fetch all camera IDs...")
-            cmd = ["scrapy", "crawl", "spider_filtered_ids"]
+            cmd = self._build_scrapy_command("spider_filtered_ids")
 
             for setting, value in self.scrapy_settings.items():
                 cmd.extend(["-s", f"{setting}={value}"])
@@ -171,7 +182,7 @@ class ContinuousWorkflow:
         """
         try:
             logger.info(f"📸 Running spider_get_images with {len(camera_ids)} cameras...")
-            cmd = ["scrapy", "crawl", "spider_get_images"]
+            cmd = self._build_scrapy_command("spider_get_images")
             cmd.extend(["-a", f"n_raspberry={self.n_raspberry}"])
             cmd.extend(["-a", f"raspberry_id={self.raspberry_id}"])
             cmd.extend(["-a", f"camera_ids={json.dumps(camera_ids)}"])
@@ -226,9 +237,10 @@ class ContinuousWorkflow:
             # Run the inference pipeline
             total_detections = run_inference_pipeline(
                 images_dir=self.images_dir,
+                conf_thresh=self.conf_thresh,
+                model_conf_thresh=self.model_conf_thresh,
                 n_consecutive=self.n_consecutive,
                 max_gap_seconds=self.max_gap_seconds,
-                min_detections=self.min_detections,
                 logger=logger,
             )
 
