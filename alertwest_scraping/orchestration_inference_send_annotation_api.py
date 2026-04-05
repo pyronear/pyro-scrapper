@@ -134,7 +134,8 @@ def generate_alert_api_id(cam_id: str, azimuth: str, recorded_at: datetime) -> i
     return zlib.crc32(seed.encode("utf-8")) & 0x7FFFFFFF
 
 
-def run_inference_pipeline(images_dir: Path,
+def run_inference_pipeline(
+    images_dir: Path,
     conf_thresh: float = CONF_THRESH,
     model_conf_thresh: float = MODEL_CONF_THRESH,
     n_consecutive: int = N_CONSECUTIVE,
