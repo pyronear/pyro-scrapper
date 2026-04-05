@@ -22,6 +22,8 @@ to find valid sequences.
 
 """
 
+# ruff: noqa: I001
+
 from __future__ import annotations
 
 import argparse
@@ -35,22 +37,35 @@ from typing import Dict, List, Optional, Tuple
 
 from PIL import Image
 
-# Ensure repo root is on sys.path when running as a script
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 PREDICTOR_ROOT = Path(__file__).resolve().parents[2] / "pyro-engine" / "pyro-predictor"
 if PREDICTOR_ROOT.exists() and str(PREDICTOR_ROOT) not in sys.path:
     sys.path.insert(0, str(PREDICTOR_ROOT))
 
-from alertwest_scraping.config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
-from alertwest_scraping.send_annotation_api import import_sequence_via_annotation_api
-from alertwest_scraping.utils_inference_annotation import (
-    ImageEntry,
-    find_folder_metadata,
-    iter_leaf_folders,
-    scan_folder_images,
-    xyxy_to_yolo,
-)
-from pyro_predictor import Predictor
+if __package__ in (None, ""):
+    # Ensure repo root is on sys.path when running as a script.
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+    from alertwest_scraping.config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
+    from alertwest_scraping.send_annotation_api import import_sequence_via_annotation_api
+    from alertwest_scraping.utils_inference_annotation import (
+        ImageEntry,
+        find_folder_metadata,
+        iter_leaf_folders,
+        scan_folder_images,
+        xyxy_to_yolo,
+    )
+    from pyro_predictor import Predictor
+else:
+    from .config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
+    from .send_annotation_api import import_sequence_via_annotation_api
+    from .utils_inference_annotation import (
+        ImageEntry,
+        find_folder_metadata,
+        iter_leaf_folders,
+        scan_folder_images,
+        xyxy_to_yolo,
+    )
+    from pyro_predictor import Predictor
 
 TIMESTAMP_FMT = "%Y%m%d_%H%M%S"
 
