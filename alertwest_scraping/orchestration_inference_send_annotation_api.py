@@ -22,8 +22,6 @@ to find valid sequences.
 
 """
 
-# ruff: noqa: I001
-
 from __future__ import annotations
 
 import argparse
@@ -194,7 +192,11 @@ def run_inference_pipeline(
         total_folders += 1
         cam_id, cam_name, lat, lon = find_folder_metadata(folder)
         azimuth = folder.name
-        int_azimuth = int(round(float(azimuth)))
+        if azimuth == "unknown":
+            int_azimuth = -666
+        else :
+            int_azimuth =int(round(float(azimuth)))
+            
         # At least N_CONSECUTIVE images are required to find a valid sequence
         entries = scan_folder_images(folder)
         if len(entries) < n_consecutive:
