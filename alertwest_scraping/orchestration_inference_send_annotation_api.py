@@ -54,6 +54,8 @@ if __package__ in (None, ""):
     )
     from pyro_predictor import Predictor
 else:
+    from pyro_predictor import Predictor
+
     from .config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
     from .send_annotation_api import import_sequence_via_annotation_api
     from .utils_inference_annotation import (
@@ -63,7 +65,6 @@ else:
         scan_folder_images,
         xyxy_to_yolo,
     )
-    from pyro_predictor import Predictor
 
 TIMESTAMP_FMT = "%Y%m%d_%H%M%S"
 
@@ -194,9 +195,9 @@ def run_inference_pipeline(
         azimuth = folder.name
         if azimuth == "unknown":
             int_azimuth = -666
-        else :
-            int_azimuth =int(round(float(azimuth)))
-            
+        else:
+            int_azimuth = int(round(float(azimuth)))
+
         # At least N_CONSECUTIVE images are required to find a valid sequence
         entries = scan_folder_images(folder)
         if len(entries) < n_consecutive:

@@ -57,7 +57,7 @@ def import_sequence_via_annotation_api(
     sequence,
     cam_id: str,
     cam_name: str,
-    azimuth: Optional[int],
+    azimuth: Optional[float],
     lat: float,
     lon: float,
     alert_api_id: int,
