@@ -31,7 +31,7 @@ import sys
 import zlib
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from PIL import Image
 
@@ -52,10 +52,7 @@ if __package__ in (None, ""):
         scan_folder_images,
         xyxy_to_yolo,
     )
-    from pyro_predictor import Predictor
 else:
-    from pyro_predictor import Predictor
-
     from .config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
     from .send_annotation_api import import_sequence_via_annotation_api
     from .utils_inference_annotation import (
@@ -66,7 +63,24 @@ else:
         xyxy_to_yolo,
     )
 
+if TYPE_CHECKING:
+    from pyro_predictor import Predictor
+else:
+    Predictor = Any
+
 TIMESTAMP_FMT = "%Y%m%d_%H%M%S"
+
+
+def _load_predictor_class():
+    """Load Predictor lazily to avoid import-time failures during test collection."""
+    try:
+        from pyro_predictor import Predictor
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "pyro_predictor is not available. Install pyro-engine/pyro-predictor "
+            "or ensure it is on PYTHONPATH before running inference."
+        ) from exc
+    return Predictor
 
 
 def build_labels_by_path(
@@ -170,7 +184,8 @@ def run_inference_pipeline(
     # Loading predictor
     log.info("🔥 Initializing predictor for inference...")
     try:
-        predictor = Predictor(
+        predictor_class = _load_predictor_class()
+        predictor = predictor_class(
             conf_thresh=conf_thresh,
             model_conf_thresh=model_conf_thresh,
             nb_consecutive_frames=n_consecutive,
@@ -216,7 +231,7 @@ def run_inference_pipeline(
             if previous_entry is not None:
                 gap_seconds = (entry.ts - previous_entry.ts).total_seconds()
                 if gap_seconds < 0 or gap_seconds > MAX_GAP_SECONDS:
-                    predictor = Predictor(
+                    predictor = predictor_class(
                         conf_thresh=conf_thresh,
                         model_conf_thresh=model_conf_thresh,
                         nb_consecutive_frames=n_consecutive,
