@@ -84,6 +84,13 @@ class ContinuousWorkflow:
             latitude=40.7608,
             longitude=-111.8910,
         )
+        # self.location = LocationInfo(
+        #     name="NewYorkCity",
+        #     region="USA",
+        #     timezone="America/New_York",
+        #     latitude=40.7128,
+        #     longitude=-74.0060,
+        # )
 
         # Handle signals for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
