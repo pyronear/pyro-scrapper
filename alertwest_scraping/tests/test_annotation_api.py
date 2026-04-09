@@ -7,8 +7,8 @@ from pathlib import Path
 # Ensure repo root is on sys.path so tests can import alertwest_scraping
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from alertwest_scraping.send_annotation_api import import_sequence_via_annotation_api
-from alertwest_scraping.utils_inference_annotation import ImageEntry
+from alertwest_scraping.inference_core.send_annotation_api import import_sequence_via_annotation_api
+from alertwest_scraping.inference_core.utils_inference_annotation import ImageEntry
 
 
 def test_import_sequence_via_annotation_api_uses_credentials(monkeypatch, tmp_path):
@@ -62,11 +62,11 @@ def test_import_sequence_via_annotation_api_uses_credentials(monkeypatch, tmp_pa
     )
 
     monkeypatch.setattr(
-        "alertwest_scraping.send_annotation_api.ensure_annotation_api_importable",
+        "alertwest_scraping.inference_core.send_annotation_api.ensure_annotation_api_importable",
         lambda: tmp_path,
     )
     monkeypatch.setattr(
-        "alertwest_scraping.send_annotation_api.load_annotation_env",
+        "alertwest_scraping.inference_core.send_annotation_api.load_annotation_env",
         lambda *args, **kwargs: None,
     )
 

@@ -2,6 +2,8 @@
 
 ## Overview
 
+Project documentation lives in [alertwest_scraping/README.md](alertwest_scraping/README.md).
+
 ## Local setup with uv
 
 Use uv (0.5.13 in CI) with Python 3.11 to mirror `.github/workflows/style.yml`.

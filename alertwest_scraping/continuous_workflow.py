@@ -33,7 +33,7 @@ from alertwest_scraping.config import (
     N_RASPBERRY,
     RASPBERRY_ID,
 )
-from alertwest_scraping.orchestration_inference_send_annotation_api import (
+from alertwest_scraping.inference_core.orchestration_inference_send_annotation_api import (
     run_inference_pipeline,
 )
 

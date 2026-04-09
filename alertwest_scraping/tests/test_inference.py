@@ -33,7 +33,7 @@ def import_inference_with_fake_predictor(monkeypatch):
 
     import importlib
 
-    return importlib.import_module("alertwest_scraping.utils_inference_annotation")
+    return importlib.import_module("alertwest_scraping.inference_core.utils_inference_annotation")
 
 
 def test_parse_timestamp_from_filename(monkeypatch):

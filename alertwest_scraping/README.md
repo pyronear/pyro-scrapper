@@ -132,15 +132,6 @@ Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
 ## Usage
 One can use the CLI options to override Scrapy settings for exploring new behaviors with new parameters or to force re-fetching of camera IDs.
 
-### Standard Continuous Workflow
-
-```bash
-python -m alertwest_scraping.continuous_workflow
-```
-
-### Command-Line Options
-
-#### Override Scrapy Settings
 Examples: 
 
 Increase timeout for slow networks:
@@ -156,11 +147,9 @@ python -m alertwest_scraping.continuous_workflow -s CONCURRENT_REQUESTS=128 -s C
 #### Force Re-filtering Camera IDs
 
 Normally, `good_ids.json` once fetched for the first time is cached. Force a refresh:
-```bash
 python -m alertwest_scraping.continuous_workflow --force-get-ids
 ```
 
-This is useful after the API changes or if you want to update the camera filter criteria.
 ---
 
 ## Architecture
@@ -181,9 +170,9 @@ The continuous workflow orchestrates a 24-hour cycle combining camera scraping a
 
 - **Continuous Runner**: `continuous_workflow.py` manages the day/night cycle and orchestrates scraping plus inference.
 - **Scrapy spiders and pipelines**: `scrapy_core/...` download and store camera images with metadata.
-- **Predictor orchestration**: `orchestration_inference_send_annotation_api.py` scans image folders, runs the temporal Predictor, and decides when to submit a sequence.
-- **Inference utilities**: `utils_inference_annotation.py` centralizes filename parsing, folder scanning, and box conversion helpers.
-- **Annotation API client**: `send_annotation_api.py` formats the YOLO-like payload and sends sequences, detections, and annotations to pyro-annotator.
+- **Predictor orchestration**: `inference_core/orchestration_inference_send_annotation_api.py` scans image folders, runs the temporal Predictor, and decides when to submit a sequence.
+- **Inference utilities**: `inference_core/utils_inference_annotation.py` centralizes filename parsing, folder scanning, and box conversion helpers.
+- **Annotation API client**: `inference_core/send_annotation_api.py` formats the YOLO-like payload and sends sequences, detections, and annotations to pyro-annotator.
 
 ---
 
@@ -243,15 +232,15 @@ images/
 
 ### Wildfire Detection with pyro-engine
 
-The `orchestration_inference_send_annotation_api.py` pipeline enables automated wildfire detection on scraped camera images using temporal analysis and API submission.
+The `inference_core/orchestration_inference_send_annotation_api.py` pipeline enables automated wildfire detection on scraped camera images using temporal analysis and API submission.
 
 #### How it works
 
 1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images where timestamps are separated by at most a specified gap.
 
-2. **Detection**: Each valid sequence is processed through the inference utilities module (`utils_inference_annotation.py`) which supports the wildfire detection pipeline on each image in the sequence.
+2. **Detection**: Each valid sequence is processed through the inference utilities module (`inference_core/utils_inference_annotation.py`) which supports the wildfire detection pipeline on each image in the sequence.
 
-3. **API Submission**: Sequences with detected wildfires (enough detections) are formatted as YOLO datasets and submitted to the pyro-annotator API via the annotation API integration module (`send_annotation_api.py`).
+3. **API Submission**: Sequences with detected wildfires (enough detections) are formatted as YOLO datasets and submitted to the pyro-annotator API via the annotation API integration module (`inference_core/send_annotation_api.py`).
 
 
 #### API Integration Details
@@ -267,7 +256,7 @@ When a fire sequence is detected:
 
 ## Next steps / TO DO
 
-- ✅ **API Integration** - Annotation API now integrated via `send_annotation_api.py` with automatic YOLO format conversion and submission (completed)
+- ✅ **API Integration** - Annotation API now integrated via `inference_core/send_annotation_api.py` with automatic YOLO format conversion and submission (completed)
 - 🔄 **Doing robust test detection with Real Fire Images** - Validate detection accuracy with actual wildfire imagery
 - Integrate the pyro-engine and pyro-annotator dependencies directly into the pyro-scrapper requirements.txt to allow setup via a single `pip install -r requirements.txt` command
 - Verify scraping frequency to ensure all images captured during the day can be processed during the night
