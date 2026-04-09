@@ -15,7 +15,7 @@ Example:
     CAM123_20250212_153000_123456_43.6047_1.4442_Ben_Bolte_2.jpg
 
 Usage (from repo root or the alertwest_scraping folder):
-    python alertwest_scraping/orchestration_inference_send_annotation_api.py --n 6 --max-gap 60
+    python alertwest_scraping/inference_core/orchestration_inference_send_annotation_api.py --n 6 --max-gap 60
 Make sure max-gap is set according to the frequency time of scraping
 (e.g., not less than 60 seconds if images are scraped every minute)
 to find valid sequences.
@@ -41,11 +41,11 @@ if PREDICTOR_ROOT.exists() and str(PREDICTOR_ROOT) not in sys.path:
 
 if __package__ in (None, ""):
     # Ensure repo root is on sys.path when running as a script.
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
     from alertwest_scraping.config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
-    from alertwest_scraping.send_annotation_api import import_sequence_via_annotation_api
-    from alertwest_scraping.utils_inference_annotation import (
+    from alertwest_scraping.inference_core.send_annotation_api import import_sequence_via_annotation_api
+    from alertwest_scraping.inference_core.utils_inference_annotation import (
         ImageEntry,
         find_folder_metadata,
         iter_leaf_folders,
@@ -53,7 +53,7 @@ if __package__ in (None, ""):
         xyxy_to_yolo,
     )
 else:
-    from .config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
+    from ..config import CONF_THRESH, FRAME_SIZE, MAX_GAP_SECONDS, MODEL_CONF_THRESH, N_CONSECUTIVE
     from .send_annotation_api import import_sequence_via_annotation_api
     from .utils_inference_annotation import (
         ImageEntry,
@@ -263,7 +263,7 @@ def run_inference_pipeline(
                     labels_by_path = build_labels_by_path(predictor, current_window, cam_key)
                     alert_api_id = generate_alert_api_id(cam_id, azimuth, current_window[0].ts)
 
-                    # Print les valeurs de confidence pour chaque détection dans la séquence
+                    # Print les valeurs de confidence pour chaque detection dans la sequence
                     for path, labels in labels_by_path.items():
                         for label in labels:
                             _, _, _, _, _, conf = label
@@ -316,8 +316,7 @@ def main(
         Exit code (0 for success, 1 for error).
 
     """
-    here = Path(__file__).parent
-    root = Path(images_dir) if images_dir else here / "images"
+    root = Path(images_dir) if images_dir else Path(__file__).resolve().parents[1] / "images"
     log = logger or logging.getLogger(__name__)
 
     # Test if images directory is not none type or does exist
