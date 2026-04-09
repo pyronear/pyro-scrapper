@@ -179,7 +179,9 @@ class GetImagesPipeline(ImagesPipeline):
 
         print(f"Timed out for {self.timeout_cam} cameras among {matched} matched cameras.")
         if missing:
-            print(f"{missing} requested cameras were not present in the latest API payload ({matched}/{requested} matched).")
+            print(
+                f"{missing} requested cameras were not present in the latest API payload ({matched}/{requested} matched)."
+            )
 
     def get_media_requests(self, item, info):
         """Download and save image."""
