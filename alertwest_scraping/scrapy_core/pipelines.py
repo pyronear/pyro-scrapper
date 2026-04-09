@@ -173,12 +173,20 @@ class GetImagesPipeline(ImagesPipeline):
         """Finalize pipeline when spider closes."""
         if self.progress_bar:
             self.progress_bar.close()
-        print(f"Timed out for {self.timeout_cam} cameras among {spider.total_cams_to_get_image_of} total cameras.")
+        requested = getattr(spider, "total_cams_requested", len(getattr(spider, "camera_ids", [])))
+        matched = getattr(spider, "total_cams_to_get_image_of", requested)
+        missing = getattr(spider, "total_cams_missing_from_api", max(0, requested - matched))
+
+        print(f"Timed out for {self.timeout_cam} cameras among {matched} matched cameras.")
+        if missing:
+            print(f"{missing} requested cameras were not present in the latest API payload ({matched}/{requested} matched).")
 
     def get_media_requests(self, item, info):
         """Download and save image."""
         if self.progress_bar is None:
-            total = len(getattr(info.spider, "camera_ids"))
+            total = getattr(info.spider, "total_cams_to_get_image_of", 0)
+            if total <= 0:
+                total = len(getattr(info.spider, "camera_ids", []))
             self.progress_bar = tqdm(
                 total=total,
                 desc="Downloading images 🚀 ",
