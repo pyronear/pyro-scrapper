@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from PIL import Image
 
-PREDICTOR_ROOT = Path(__file__).resolve().parents[2] / "pyro-engine" / "pyro-predictor"
+PREDICTOR_ROOT = Path(__file__).resolve().parents[3] / "pyro-engine" / "pyro-predictor"
 if PREDICTOR_ROOT.exists() and str(PREDICTOR_ROOT) not in sys.path:
     sys.path.insert(0, str(PREDICTOR_ROOT))
 
