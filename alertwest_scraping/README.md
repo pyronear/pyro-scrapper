@@ -6,6 +6,7 @@ A production-ready Scrapy pipeline for automated camera image scraping and wildf
 
 ## Table of Contents
 
+0. [Installation](#installation)
 1. [Running](#running)
 2. [Configuration](#configuration)
 3. [Usage](#usage)
@@ -13,14 +14,59 @@ A production-ready Scrapy pipeline for automated camera image scraping and wildf
 5. [Scraping Details](#scraping-details)
 6. [Inference Details](#inference-details)
 
+--- 
+
+### Installation
+
+First you need to git clone the repositories of pyro-engine and pyro-annotator in the same parent folder as pyro-scrapper:
+
+```bash
+git clone https://github.com/pyronear/pyro-engine.git
+git clone https://github.com/pyronear/pyro-annotator.git
+```
+
+Then in a virtual environment you will need to install the requirements of pyro-engine and install it as an editable package:
+```bash
+cd ./pyro-engine
+pip install -r requirements.txt
+pip install -e .
+```
+
+Install pyro-annotator (needed for annotation API client code used by the pipeline):
+
+```bash
+cd ./pyro-annotator/annotation_api
+pip install -e .
+```
+
+Then in the same virtual environment, install the requirements of alertwest_scraping.
+
+```bash
+cd ./pyro-scrapper/alertwest_scraping
+pip install -r requirements.txt
+```
+
+**Annotation API Credentials**
+
+Create a `.env` file in the ./pyro-annotator/annotation_api/ folder with your pyronear annotation API credentials (otherwise all detected wildfire sequences will fail to be sent to the API):
+
+```
+MAIN_ANNOTATION_LOGIN=your_username
+MAIN_ANNOTATION_PASSWORD=your_password
+```
+
+These credentials are used by the annotation API integration code to authenticate with `https://annotationapi.pyronear.org/`.
+
 ---
 
 ### Running
 
-1. **Configure your Raspberry Pi ID** in `config.py`:
+1. **Configure the number of Raspberry working in parallel and your Raspberry Pi ID** in `.\pyro-scrapper\alertwest_scraping\config.py`:
    ```python
-   RASPBERRY_ID = 0  # Change this to your Raspberry Pi number (0 to N_RASPBERRY-1)
+    N_RASPBERRY = 2  # Total number of Raspberry Pi devices in your network
+    RASPBERRY_ID = 0  # Change this to your Raspberry Pi number (0 to N_RASPBERRY-1)
    ```
+   **Modify `RASPBERRY_ID` on each Raspberry Pi device.**
 
 2. **Start the continuous workflow**:
    ```bash
@@ -31,35 +77,26 @@ A production-ready Scrapy pipeline for automated camera image scraping and wildf
 That's it! The workflow automatically:
 - Fetches and filters camera IDs during the day
 - Scrapes images from assigned cameras
-- Runs wildfire detection at night
+- Runs wildfire detection at night with Predictor and sends the resulting sequences to the annotation API
 - Cleans up images after inference
+- ... repeating until a manual stop.
 
 ---
 
-## Installation
+### Tests
 
-First you need to git clone the repository of pyro-engine in a same folder than the repositery where alertwest_scraping is, link : https://github.com/pyronear/pyro-engine
-
-Then in a virtual environment you will need to install the requirement of pyro-engine and install it as an executable
-```bash
-cd ./pyro-engine
-pip install -r requirements.txt
-pip install -e .
-```
-Then in the same virtual environment, install the requirements of alertwest_scraping 
+Run the full test suite from the repository root:
 
 ```bash
-cd ./pyro-scrapper/alertwest_scraping
-pip install -r requirements.txt
+pytest ./alertwest_scraping/tests
 ```
 
 ---
 
 ## Configuration
+One should prioritize tuning the parameters in the `config.py` and 'settings.py` files once the best parameters are found for normal operation. 
 
-### `config.py` - Main Configuration
-
-This file controls the overall workflow behavior. **Modify `RASPBERRY_ID` on each Raspberry Pi device.**
+### `.\pyro-scrapper\alertwest_scraping\config.py` - Main Configuration
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -75,15 +112,9 @@ This file controls the overall workflow behavior. **Modify `RASPBERRY_ID` on eac
 
 ### `scrapy_core/spiders/config.py` - Spider Configuration
 
-Controls what data is fetched from the AlertWest API and where to cache it.
+Controls some important features of the pipeline at different scale and stape (fetching, inference/Annotation_API). One should try to tune these parameters to find the best trade-off between speed and reliability. They can be overridden via CLI when running the workflow (see [Usage](#usage) section).
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `INTERESTING_PROPERTIES` | See file | Camera properties to extract (azimuth, name, location, etc.) |
-| `API_URL` | AlertWest API | Endpoint for camera metadata |
-| `CACHE_DIR` | `data/alertwest_cache` | Cache directory for API responses |
-
-### `scrapy_core/settings.py` - Scrapy Settings
+### `.\pyro-scrapper\alertwest_scraping\scrapy_core\settings.py` - Scrapy Settings
 
 Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
 
@@ -99,6 +130,7 @@ Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
 ---
 
 ## Usage
+One can use the CLI options to override Scrapy settings for exploring new behaviors with new parameters or to force re-fetching of camera IDs.
 
 ### Standard Continuous Workflow
 
@@ -106,13 +138,10 @@ Fine-tune performance during scraping. Can be overridden via CLI with `-s`:
 python -m alertwest_scraping.continuous_workflow
 ```
 
-The workflow cycles automatically:
-- **Day**: Fetches camera IDs → Scrapes images in cycles
-- **Night**: Runs wildfire detection on collected images and purges the images of the previous day
-
 ### Command-Line Options
 
 #### Override Scrapy Settings
+Examples: 
 
 Increase timeout for slow networks:
 ```bash
@@ -128,29 +157,10 @@ python -m alertwest_scraping.continuous_workflow -s CONCURRENT_REQUESTS=128 -s C
 
 Normally, `good_ids.json` once fetched for the first time is cached. Force a refresh:
 ```bash
-python -m alertwest_scraping.continuous_workflow --force-scrape
+python -m alertwest_scraping.continuous_workflow --force-get-ids
 ```
 
 This is useful after the API changes or if you want to update the camera filter criteria.
-
-#### Combined Example
-
-```bash
-python -m alertwest_scraping.continuous_workflow --force-scrape -s DOWNLOAD_TIMEOUT=5 -s CONCURRENT_REQUESTS=128
-```
-
-### Single Spider Runs (Advanced)
-
-Fetch and filter all camera IDs once:
-```bash
-scrapy crawl spider_filtered_ids
-```
-
-Debug mode (verbose logs):
-```bash
-python -m alertwest_scraping.continuous_workflow -s LOG_LEVEL=DEBUG
-```
-
 ---
 
 ## Architecture
@@ -159,54 +169,51 @@ python -m alertwest_scraping.continuous_workflow -s LOG_LEVEL=DEBUG
 
 The continuous workflow orchestrates a 24-hour cycle combining camera scraping and wildfire detection.
 
-1. **Daytime (e.g., 6 AM - 9 PM)**:
-   - **Fetch Camera IDs**: Periodically retrieve and filter camera IDs from the AlertWest API based on location and other criteria.
-   - **Scrape Images**: Download images from assigned cameras in a distributed manner across available Raspberry Pi devices.
+1. **Daytime in US (using a fix location)**:
+    - **Scrape Images**: Each devices download and store images from assigned cameras in a distributed manner across available Raspberry Pi devices.
 
-2. **Nighttime (e.g., 9 PM - 6 AM)**:
+2. **Nighttime in US (using a fix location)**:
    - **Wildfire Detection**: Analyze collected images for wildfire detection using the pyroengine model.
+   - **API Submission**: Automatically submit detected wildfire sequences to the pyro-annotator API for annotation and further processing.
    - **Cleanup**: Remove old images.
 
 ### Components
 
-- **Scrapy Spiders**: `alertwest_spider.py` for scraping camera metadata and images.
-- **Continuous Runner**: `continuous_scraper.py` to run the spider at regular intervals.
-- **Wildfire Detection**: Integrated pyroengine model inference on scraped images.
-- **Logging**: Custom log formatter to reduce noise and highlight important events.
+- **Continuous Runner**: `continuous_workflow.py` manages the day/night cycle and orchestrates scraping plus inference.
+- **Scrapy spiders and pipelines**: `scrapy_core/...` download and store camera images with metadata.
+- **Predictor orchestration**: `orchestration_inference_send_annotation_api.py` scans image folders, runs the temporal Predictor, and decides when to submit a sequence.
+- **Inference utilities**: `utils_inference_annotation.py` centralizes filename parsing, folder scanning, and box conversion helpers.
+- **Annotation API client**: `send_annotation_api.py` formats the YOLO-like payload and sends sequences, detections, and annotations to pyro-annotator.
 
 ---
 
 ## Scraping Details
 
-### Spider: `alertwest_spider.py`
+### 2 Spiders: 
 
+First spider (`spider_filtered_ids.py`) fetches camera metadata and filters camera IDs based on criteria (e.g., location). The second spider (`spider_get_images.py`) uses the filtered IDs to scrape images.
+
+Both doing approximetly the same things but not on the same cameras : 
 - Sends a GET request to the AlertWest API.
-- Parses the JSON response to extract:
-  - `key_list`: mapping from short keys to property names.
-  - `data_cams`: the list of cameras.
-- Maps interesting properties (Azimuth, camId, Screenshot, camLastMoved, camName, etc.) to their short keys.
+- Parses the JSON response to extract interesting properties.
+- Maps interesting properties (Azimuth, camId, Screenshot, camName, etc.) to their short keys.
 - For each camera, builds the image URL:
 
 ```
 https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{YYYY/MM/DD}/{img_name}
 ```
 
-- Yields `PyronearItem` objects with metadata and `image_url`.
+- Yields `PyronearItem` objects with metadata.
 
 ### Items: `items.py`
 
-`PyronearItem` fields:
-- `id`: camera identifier
-- `name`: camera name
-- `azimuth`: camera orientation
-- `last_moved`: last movement timestamp
-- `image_url`: image URL to download
-- `valid_url`: URL validity flag
+Give the metadata needed for an item to have.
 
-### Pipeline: `pipelines.py`
+### 2 Pipeline: `pipelines.py`
 
-Inherits from `scrapy.pipelines.images.ImagesPipeline` and:
+2 pipelines associated each with their respective spider. They are acting on the items yielded by the spiders. 
 
+The `AlertwestImagePipeline` inherits from `scrapy.pipelines.images.ImagesPipeline` and is responsible for downloading images and saving them with a specific structure.
 | Method | Purpose |
 |--------|---------|
 | `open_spider()` | Initializes counters, timers, and a progress bar |
@@ -223,125 +230,45 @@ Inherits from `scrapy.pipelines.images.ImagesPipeline` and:
 - `RETRY_ENABLED = False`: skip retries for faster throughput
 - `DOWNLOAD_TIMEOUT = 2s`: aggressive timeout for speed (tune as needed)
 
-### Error handling
-
-A custom `LogFormatter` silences timeout noise. Counters track:
-- Timeouts: images not downloaded due to deadlines
-- Camera down: HTTP 4xx/5xx
-- Missing URLs: incomplete JSON preventing URL construction
-
 ### Image storage structure
 
 ```
 images/
 └── {cam_id}/
       └── {azimuth}/
-            └── {cam_id}_{scraping_timestamp}.jpg
-```
-
-### Scrapy Settings
-
-Key Scrapy options in `settings.py`:
-
-```python
-CONCURRENT_REQUESTS = 64
-CONCURRENT_ITEMS = 400
-DOWNLOAD_TIMEOUT = 2
-RETRY_ENABLED = False
-LOG_FORMATTER = "scrapy_core.logformatter.SilentTimeoutLogFormatter"
+            └── {cam_id}_{scraping_timestamp}_{lat}_{lon}_{cam_name}.jpg
 ```
 
 ## Inference Details
 
 ### Wildfire Detection with pyro-engine
 
-The `plug_to_pyroengine.py` script enables automated wildfire detection on scraped camera images using temporal analysis.
+The `orchestration_inference_send_annotation_api.py` pipeline enables automated wildfire detection on scraped camera images using temporal analysis and API submission.
 
 #### How it works
 
-1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images (default: 6) where timestamps are separated by at most a specified gap (default: 120 seconds).
+1. **Temporal Filtering**: Scans the `images/` folder and identifies sequences of N consecutive images where timestamps are separated by at most a specified gap.
 
-2. **Detection**: Each valid sequence is processed folder-by-folder through pyroengine's wildfire detection model.
+2. **Detection**: Each valid sequence is processed through the inference utilities module (`utils_inference_annotation.py`) which supports the wildfire detection pipeline on each image in the sequence.
 
-3. **Output**: Folders containing sequences with detected wildfires are copied to an `annotations/` directory for further review.
-
-#### Usage
-
-First, ensure you're in an environment with pyroengine installed:
-
-```bash
-conda activate pyronear
-python plug_to_pyroengine.py --n 6 --max-gap 90 --conf-thresh 0.15
-```
-
-#### Options
-
-- `--images-dir`: Root images directory (defaults to `images/` next to the script)
-- `--n`: Required number of consecutive images in a sequence (default: 6)
-- `--max-gap`: Maximum allowed gap in seconds between consecutive images (default: 60)
-- `--conf-thresh`: Confidence threshold for wildfire detection (default: 0.15)
-- `--output-dir`: Output directory for detected sequences (default: `annotations/` next to images)
-
-#### Example
-
-```bash
-# Analyze sequences of 8 images with 30-second max gap and 0.20 confidence threshold
-python plug_to_pyroengine.py --n 8 --max-gap 30 --conf-thresh 0.20 --output-dir ./detections
-```
-
-#### Prerequisites for Detection
-
-Before running wildfire detection, install pyroengine and its dependencies:
-
-```bash
-cd ../../pyro-engine
-pip install -r requirements.txt
-pip install -e .
-```
-
----
+3. **API Submission**: Sequences with detected wildfires (enough detections) are formatted as YOLO datasets and submitted to the pyro-annotator API via the annotation API integration module (`send_annotation_api.py`).
 
 
-## Mécanisme de scraping (détail technique)
+#### API Integration Details
 
-1. Le spider `scrapy_core/spiders/alertwest_spider.py` :
-     - Envoie une requête HTTP GET vers `API_URL = "https://api.cdn.prod.alertwest.com/api/getCameraDataByLoc"`.
-     - Parse le corps JSON de la réponse et récupère deux objets principaux :
-         - `key_list` : mapping des clés courtes vers les noms de propriétés (utilisé pour retrouver les champs dynamiques renvoyés par l'API).
-         - `data_cams` : liste des objets caméra.
-     - Construit `short_key` en comparant les noms de propriétés intéressantes (ex : `Azimuth`, `camLastMoved`, `camId`, `Screenshot`, `camName`) avec `key_list` pour déterminer quelle clé courte correspond à chaque propriété.
-     - Pour chaque caméra dans `data_cams` :
-         - Lit les valeurs (id, nom, azimut, timestamp, nom d'image).
-         - Si `cam_id` et `img_name` sont présents, construit l'URL d'image :
-             `https://img.cdn.prod.alertwest.com/data/img/{cam_id}/{YYYY/MM/DD}/{img_name}` (la date utilisée est la date courante).
-         - Crée un `PyronearItem` avec les champs remplis et le `image_url` construit, puis `yield item`.
+When a fire sequence is detected:
 
-2. Items (`scrapy_core/items.py`) :
-     - `PyronearItem` est un conteneur Scrapy standard définissant les champs attendus. Le pipeline et le spider s'appuient dessus pour transporter métadonnées + URL.
+1. **Unique ID Generation**: Each sequence receives a stable, collision-free ID via CRC32 hash of `{cam_id}:{azimuth}:{timestamp}`. This allows safe re-ingestion without API conflicts.
 
-3. Pipeline `AlertwestImagePipeline` (`scrapy_core/pipelines.py`) :
-     - Hérite de `scrapy.pipelines.images.ImagesPipeline`.
-     - Méthodes principales :
-         - `open_spider(self, spider)` : initialise timers, compteurs et la barre de progression `tqdm`. Récupère `spider.total_cams` pour fixer la taille de la barre.
-         - `get_media_requests(self, item, info)` :
-             - Appelée pour chaque `item`. Si `item['image_url']` existe, elle met à jour la barre de progression puis retourne une `scrapy.Request` pointant vers l'URL d'image en transférant les métadonnées utiles via `meta` (ex : `id`, `azimuth`, `last_moved`).
-             - Si l'URL est absente, incrémente un compteur `no_url`.
-         - `media_failed(self, failure, request, info)` : intercepte les erreurs réseau/timout et incrémente des compteurs (`timeout_cam`, `failed_cam`) selon la nature de l'erreur.
-         - `file_path(self, request, response=None, info=None, item=None)` : construit le chemin local de sauvegarde pour chaque image. Format : ``{cam_id}/{azimuth}/{cam_id}_{scraping_timestamp}.jpg`` (azimuth vaut `unknown` si absent).
-         - `close_spider(self, spider)` : affiche un résumé (nombre d'échecs, d'URLs manquantes, temps écoulé) et ferme la barre de progression.
+2. **API Submission**: Images and normalized boxes are sent directly to the annotation API without creating local copies.
 
-4. Réglages clés (`scrapy_core/settings.py`) :
-     - `FEEDS` : configuration pour exporter les métadonnées en JSON (`alertwest.json`).
-     - Concurrence élevée pour maximiser le throughput : `CONCURRENT_REQUESTS = 64`, `CONCURRENT_REQUESTS_PER_DOMAIN = 32`, `CONCURRENT_ITEMS = 400`.
-     - Timeout réduit pour favoriser la vitesse : `DOWNLOAD_TIMEOUT = 2` (modifiable via la ligne de commande `-s DOWNLOAD_TIMEOUT=3`).
-     - `LOG_FORMATTER` personnalisé pour cacher les logs de timeout.
-     - `RETRY_ENABLED = False` pour ne pas retenter les requêtes longues.
-
+3. **Credentials**: API authentication uses environment variables from `.env` file (see **Installation** section).
 ---
 
 ## Next steps / TO DO
 
-- Connexion à l'API d'annotation à faire plus proprement. Actuellement les images retournées positives sont copiées dans un dossier `annotations/` → créer un code d'ingestion de ce dossier par l'API d'annotation.
-- Intégrer la dépendance de pyro-engine directement dans les requirements du projet pyro-scrapper afin qu'une unique commande `pip install -r requirements.txt` suffise.
-- Vérifier la fréquence de scrapping afin que toutes les images prises en une journée soient possiblement inférées en une nuit.
-- Utiliser la librairie CodeCarbon afin de quantifier l'impact de notre code.
+- ✅ **API Integration** - Annotation API now integrated via `send_annotation_api.py` with automatic YOLO format conversion and submission (completed)
+- 🔄 **Doing robust test detection with Real Fire Images** - Validate detection accuracy with actual wildfire imagery
+- Integrate the pyro-engine and pyro-annotator dependencies directly into the pyro-scrapper requirements.txt to allow setup via a single `pip install -r requirements.txt` command
+- Verify scraping frequency to ensure all images captured during the day can be processed during the night
+- Integrate CodeCarbon library to quantify environmental impact of the code

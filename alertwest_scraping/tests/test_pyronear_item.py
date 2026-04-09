@@ -1,8 +1,10 @@
 import os
 import sys
 
-# Ensure project root is on sys.path so tests can import scrapy_core
+# Ensure package root is on sys.path so tests can import scrapy_core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Ensure repo root is on sys.path so tests can import alertwest_scraping
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from scrapy_core.items import PyronearItem
 

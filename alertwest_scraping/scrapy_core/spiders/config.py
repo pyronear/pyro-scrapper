@@ -11,6 +11,7 @@ INTERESTING_PROPERTIES = [
     "camOffline",
     "camName",
     "providerName",
+    "locId",
     "locLat",
     "locLon",
     "camLocation",

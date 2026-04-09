@@ -69,11 +69,14 @@ RETRY_ENABLED = False
 # Disable Telnet Console (enabled by default)
 # TELNETCONSOLE_ENABLED = False
 
-# Override the default request headers:
-# DEFAULT_REQUEST_HEADERS = {
-#    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-#    "Accept-Language": "en",
-# }
+# Override default request headers to avoid Brotli responses.
+# Some AlertWest API responses are malformed with Brotli compression and can
+# crash Scrapy's decompression middleware.
+DEFAULT_REQUEST_HEADERS = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en",
+    "Accept-Encoding": "gzip, deflate",
+}
 
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html

@@ -18,17 +18,22 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from astral import LocationInfo
 from astral.sun import sun
 
 from alertwest_scraping.config import (
     CACHE_DIR,
+    CONF_THRESH,
     INTERVAL,
+    MAX_GAP_SECONDS,
+    MODEL_CONF_THRESH,
+    N_CONSECUTIVE,
     N_RASPBERRY,
     RASPBERRY_ID,
 )
-from alertwest_scraping.plug_to_pyroengine import (
+from alertwest_scraping.orchestration_inference_send_annotation_api import (
     run_inference_pipeline,
 )
 
@@ -67,20 +72,31 @@ class ContinuousWorkflow:
         self.scrape_count = 0
         self.good_ids_path = Path(__file__).parent / "good_ids.json"
         self.images_dir = Path(__file__).parent / "images"
-        self.annotations_dir = Path(__file__).parent / "annotations"
-
-        # US Central location for sun calculations
+        self.n_consecutive = N_CONSECUTIVE
+        self.max_gap_seconds = MAX_GAP_SECONDS
+        self.conf_thresh = CONF_THRESH
+        self.model_conf_thresh = MODEL_CONF_THRESH
+        # Salt Lake City location for sun calculations
         self.location = LocationInfo(
-            name="US_Central",
+            name="SaltLakeCity",
             region="USA",
-            timezone="US/Central",
-            latitude=39.8283,
-            longitude=-98.5795,
+            timezone="America/Denver",
+            latitude=40.7608,
+            longitude=-111.8910,
         )
 
         # Handle signals for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+
+    @staticmethod
+    def _build_scrapy_command(spider_name):
+        """Build a Scrapy command using the active Python interpreter.
+
+        Using ``python -m scrapy`` avoids Windows launcher issues when ``scrapy.exe``
+        points to a stale interpreter path.
+        """
+        return [sys.executable, "-m", "scrapy", "crawl", spider_name]
 
     def _signal_handler(self, signum, frame):
         """Handle stop signals (Ctrl+C, etc.)."""
@@ -91,15 +107,26 @@ class ContinuousWorkflow:
 
     def is_night(self):
         """Check if it's currently night at the central US location."""
-        now = datetime.now(timezone.utc)
-        s = sun(self.location.observer, date=now.date())
+        if isinstance(self.location.timezone, str):
+            try:
+                tz = ZoneInfo(self.location.timezone)
+            except ZoneInfoNotFoundError:
+                logger.error(
+                    "Timezone data not found for '%s'. Install 'tzdata' to fix this. Falling back to UTC.",
+                    self.location.timezone,
+                )
+                tz = timezone.utc
+        else:
+            tz = self.location.timezone
+        now = datetime.now(tz=tz)
+        s = sun(self.location.observer, date=now.date(), tzinfo=tz)
         return now < s["sunrise"] or now > s["sunset"]
 
     def run_spider_filtered_ids(self):
         """Launch the spider_filtered_ids spider to collect all camera IDs."""
         try:
             logger.info("🕵️  Running spider_filtered_ids to fetch all camera IDs...")
-            cmd = ["scrapy", "crawl", "spider_filtered_ids"]
+            cmd = self._build_scrapy_command("spider_filtered_ids")
 
             for setting, value in self.scrapy_settings.items():
                 cmd.extend(["-s", f"{setting}={value}"])
@@ -155,7 +182,7 @@ class ContinuousWorkflow:
         """
         try:
             logger.info(f"📸 Running spider_get_images with {len(camera_ids)} cameras...")
-            cmd = ["scrapy", "crawl", "spider_get_images"]
+            cmd = self._build_scrapy_command("spider_get_images")
             cmd.extend(["-a", f"n_raspberry={self.n_raspberry}"])
             cmd.extend(["-a", f"raspberry_id={self.raspberry_id}"])
             cmd.extend(["-a", f"camera_ids={json.dumps(camera_ids)}"])
@@ -210,10 +237,10 @@ class ContinuousWorkflow:
             # Run the inference pipeline
             total_detections = run_inference_pipeline(
                 images_dir=self.images_dir,
-                output_dir=self.annotations_dir,
-                n_consecutive=6,
-                max_gap_seconds=120,
-                conf_thresh=0.15,
+                conf_thresh=self.conf_thresh,
+                model_conf_thresh=self.model_conf_thresh,
+                n_consecutive=self.n_consecutive,
+                max_gap_seconds=self.max_gap_seconds,
                 logger=logger,
             )
 
@@ -243,7 +270,7 @@ class ContinuousWorkflow:
 
         # Calculate wait time
         elapsed = time.time() - cycle_start
-        wait_time = max(0, 30 - elapsed)
+        wait_time = max(0, self.interval - elapsed)
 
         if wait_time > 0:
             logger.info(f"⏳ Waiting {wait_time:.2f}s before next scrape...")
